@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/main/crates/tauri-schema-generator/schemas/config.schema.json",
+  "productName": "MD Viewer",
+  "version": "0.1.0",
+  "identifier": "com.aidreamworks.mdviewer",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "MD Viewer",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "titleBarStyle": "Overlay"
+      }
+    ]
+  }
+}
