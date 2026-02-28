@@ -32,26 +32,33 @@ export default function Toc() {
     return () => clearTimeout(timer);
   }, [htmlContent]);
 
-  // Scroll-spy: update active heading on scroll
+  // Scroll-spy: update active heading on scroll (throttled with rAF)
   useEffect(() => {
     const wrap = document.querySelector(".content-wrap");
     if (!wrap) return;
 
+    let rafId = 0;
     const onScroll = () => {
-      const headings = document.querySelectorAll(
-        ".content h1, .content h2, .content h3, .content h4",
-      );
-      let active: Element | null = null;
-      headings.forEach((h) => {
-        if (h instanceof HTMLElement && h.offsetTop - wrap.scrollTop <= 80) {
-          active = h;
-        }
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const headings = document.querySelectorAll(
+          ".content h1, .content h2, .content h3, .content h4",
+        );
+        let active: Element | null = null;
+        headings.forEach((h) => {
+          if (h instanceof HTMLElement && h.offsetTop - wrap.scrollTop <= 80) {
+            active = h;
+          }
+        });
+        if (active) setActiveId((active as HTMLElement).id);
       });
-      if (active) setActiveId((active as HTMLElement).id);
     };
 
     wrap.addEventListener("scroll", onScroll);
-    return () => wrap.removeEventListener("scroll", onScroll);
+    return () => {
+      wrap.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(rafId);
+    };
   }, [htmlContent]);
 
   const scrollTo = useCallback((id: string) => {
@@ -61,17 +68,17 @@ export default function Toc() {
   }, []);
 
   return (
-    <div className="toc">
+    <nav className="toc" aria-label="Table of contents">
       <div className="toc-title">Contents</div>
       {entries.map((entry) => (
-        <div
+        <button
           key={entry.id}
           className={`toc-item ${entry.level}${activeId === entry.id ? " active" : ""}`}
           onClick={() => scrollTo(entry.id)}
         >
           {entry.text}
-        </div>
+        </button>
       ))}
-    </div>
+    </nav>
   );
 }

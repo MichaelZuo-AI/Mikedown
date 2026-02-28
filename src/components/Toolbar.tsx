@@ -16,18 +16,18 @@ export default function Toolbar() {
 
   return (
     <div className="toolbar" data-tauri-drag-region>
-      <button className="tb-btn" title="Toggle sidebar" onClick={toggleSidebar}>
+      <button className="tb-btn" title="Toggle sidebar" aria-label="Toggle sidebar" onClick={toggleSidebar}>
         ☰
       </button>
       <span className="file-name">{fileName}</span>
       <span className="word-count">{statsText}</span>
-      <button className="tb-btn" title="Zoom in" onClick={() => zoom(1)}>
+      <button className="tb-btn" title="Zoom in" aria-label="Zoom in" onClick={() => zoom(1)}>
         A+
       </button>
-      <button className="tb-btn" title="Zoom out" onClick={() => zoom(-1)}>
+      <button className="tb-btn" title="Zoom out" aria-label="Zoom out" onClick={() => zoom(-1)}>
         A-
       </button>
-      <button className="tb-btn" title="Toggle theme" onClick={toggleTheme}>
+      <button className="tb-btn" title="Toggle theme" aria-label="Toggle theme" onClick={toggleTheme}>
         {theme === "dark" ? "☀" : "🌙"}
       </button>
     </div>

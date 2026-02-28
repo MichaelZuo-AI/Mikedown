@@ -8,6 +8,8 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import DropZone from "@/components/DropZone";
 import ProgressBar from "@/components/ProgressBar";
 
+const ALLOWED_EXTENSIONS = ["md", "markdown", "txt"];
+
 export default function App() {
   const theme = useAppStore((s) => s.theme);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
@@ -28,6 +30,7 @@ export default function App() {
   // Tauri drag-drop listener
   useEffect(() => {
     let unlisten: (() => void) | undefined;
+    let cancelled = false;
 
     getCurrentWindow()
       .onDragDropEvent((event) => {
@@ -37,17 +40,28 @@ export default function App() {
         } else if (dd.type === "drop") {
           setDragOver(false);
           if (dd.paths.length > 0) {
-            readDroppedFile(dd.paths[0]);
+            const path = dd.paths[0];
+            const ext = path.split(".").pop()?.toLowerCase();
+            if (ALLOWED_EXTENSIONS.includes(ext || "")) {
+              readDroppedFile(path);
+            }
           }
         } else {
           setDragOver(false);
         }
       })
       .then((fn) => {
-        unlisten = fn;
+        if (cancelled) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
       });
 
-    return () => unlisten?.();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, [setDragOver]);
 
   // Keyboard shortcuts
@@ -69,8 +83,10 @@ export default function App() {
   // Paste handler
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       const text = e.clipboardData?.getData("text/plain");
-      if (text && text.trim().startsWith("#")) {
+      if (text && text.trim().length > 0) {
         loadMarkdown(text, "Pasted");
       }
     };

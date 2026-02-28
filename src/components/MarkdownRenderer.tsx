@@ -17,6 +17,9 @@ export default function MarkdownRenderer() {
           target.textContent = "Copy";
           target.classList.remove("copied");
         }, 2000);
+      }).catch(() => {
+        target.textContent = "Failed";
+        setTimeout(() => { target.textContent = "Copy"; }, 2000);
       });
     }
   }, []);
