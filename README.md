@@ -14,7 +14,7 @@ A fast, lightweight desktop Markdown viewer built with Tauri v2 + React.
 
 ## Download
 
-Grab the latest release from the [Releases page](https://github.com/AIDreamWorks/Markdown-Viewer/releases):
+Grab the latest release from the [Releases page](https://github.com/MichaelZuo-AI/Markdown-Viewer/releases):
 
 | Platform | File |
 |---|---|
@@ -22,7 +22,7 @@ Grab the latest release from the [Releases page](https://github.com/AIDreamWorks
 
 ### Install (macOS)
 
-1. Download the `.dmg` file from [Releases](https://github.com/AIDreamWorks/Markdown-Viewer/releases)
+1. Download the `.dmg` file from [Releases](https://github.com/MichaelZuo-AI/Markdown-Viewer/releases)
 2. Open the `.dmg` and drag **MD Viewer** to your Applications folder
 3. On first launch: right-click the app → **Open** (required once for macOS Gatekeeper)
 
@@ -37,7 +37,7 @@ Grab the latest release from the [Releases page](https://github.com/AIDreamWorks
 ### Build & Run
 
 ```bash
-git clone https://github.com/AIDreamWorks/Markdown-Viewer.git
+git clone https://github.com/MichaelZuo-AI/Markdown-Viewer.git
 cd Markdown-Viewer
 pnpm install
 pnpm tauri dev        # development (hot reload)
