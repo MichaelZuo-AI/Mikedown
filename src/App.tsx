@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useAppStore } from "@/store/appStore";
 import { openMarkdownFile, readDroppedFile } from "@/lib/fileOps";
 import Sidebar from "@/components/Sidebar";
@@ -93,6 +95,27 @@ export default function App() {
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
   }, [loadMarkdown]);
+
+  // Cold start: check if the app was launched by opening a file
+  useEffect(() => {
+    invoke<string[]>("get_opened_files").then((paths) => {
+      if (paths.length > 0) {
+        readDroppedFile(paths[0]);
+      }
+    });
+  }, []);
+
+  // Warm open: listen for file-open events from macOS
+  useEffect(() => {
+    const unlisten = listen<string[]>("file-open", (event) => {
+      if (event.payload.length > 0) {
+        readDroppedFile(event.payload[0]);
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   // Scroll progress tracking
   const onScrollProgress = useCallback(() => {
