@@ -20,6 +20,35 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
+    // Handle file paths passed as CLI arguments (e.g. `./MD\ Viewer file.md`
+    // or `open -a 'MD Viewer' --args file.md`). The `open` command without
+    // --args uses Apple Events instead, which are handled by RunEvent::Opened.
+    {
+        let cli_paths: Vec<String> = std::env::args()
+            .skip(1) // skip binary path
+            .filter_map(|arg| {
+                let path = std::path::PathBuf::from(&arg);
+                let abs = if path.is_relative() {
+                    std::env::current_dir().ok()?.join(&path)
+                } else {
+                    path
+                };
+                match abs.extension().and_then(|e| e.to_str()) {
+                    Some("md" | "markdown" | "txt") if abs.is_file() => {
+                        abs.to_str().map(String::from)
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+
+        if !cli_paths.is_empty() {
+            let s = app.state::<OpenFileState>();
+            let mut pending = s.pending.lock().unwrap_or_else(|e| e.into_inner());
+            *pending = cli_paths;
+        }
+    }
+
     app.run(|app_handle, event| {
         if let RunEvent::Opened { urls } = event {
             let paths: Vec<String> = urls

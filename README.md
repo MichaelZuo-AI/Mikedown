@@ -12,6 +12,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - Syntax-highlighted code blocks with one-click copy
 - Auto-generated table of contents with scroll-spy
 - Reading progress bar and word count
+- Live reload — automatically updates when the file changes on disk
 - Drag-and-drop or paste markdown files
 - macOS file association — set as default app for `.md` files
 - macOS-native overlay titlebar
@@ -67,6 +68,11 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.3.1
+
+- Live reload — file changes on disk are automatically detected and re-rendered
+- CLI file opening — pass file paths as arguments when launching from the terminal
 
 ### v0.3.0
 

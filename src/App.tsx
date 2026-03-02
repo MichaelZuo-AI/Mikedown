@@ -2,6 +2,8 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { readTextFile } from "@tauri-apps/plugin-fs";
+import { watch } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 import { openMarkdownFile, readDroppedFile } from "@/lib/fileOps";
 import Sidebar from "@/components/Sidebar";
@@ -118,6 +120,44 @@ export default function App() {
       unlisten.then((fn) => fn());
     };
   }, []);
+
+  // Watch current file for changes
+  const filePath = useAppStore((s) => s.filePath);
+  useEffect(() => {
+    if (!filePath) return;
+
+    let cancelled = false;
+    let stopWatching: (() => void) | undefined;
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    watch(filePath, () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        if (cancelled) return;
+        try {
+          const content = await readTextFile(filePath);
+          const store = useAppStore.getState();
+          if (store.filePath === filePath) {
+            store.loadMarkdown(content, store.fileName, filePath);
+          }
+        } catch {
+          // File may be mid-write; ignore
+        }
+      }, 200);
+    }, { recursive: false }).then((unwatch) => {
+      if (cancelled) {
+        unwatch();
+      } else {
+        stopWatching = unwatch;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(debounceTimer);
+      stopWatching?.();
+    };
+  }, [filePath]);
 
   // Scroll progress tracking
   const onScrollProgress = useCallback(() => {
