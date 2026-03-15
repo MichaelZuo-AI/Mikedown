@@ -9,6 +9,12 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 ## Features
 
 - **Split-pane editor** with live preview (CodeMirror 6)
+- **Document search** (`Cmd+F`) with match highlighting and navigation
+- **KaTeX math rendering** — inline `$...$` and display `$$...$$`
+- **Mermaid diagrams** — render flowcharts, sequence diagrams, and more
+- **Export to HTML** — standalone file with embedded styles
+- **Recent files** — quick access from the sidebar
+- **Auto-save drafts** — never lose unsaved work
 - Dark/light theme with beautiful typography (Lora, DM Sans, JetBrains Mono)
 - Syntax-highlighted code blocks with one-click copy
 - Auto-generated table of contents with scroll-spy
@@ -17,7 +23,8 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - Drag-and-drop or paste markdown files
 - macOS file association — set as default app for `.md` files
 - macOS-native overlay titlebar
-- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+\` toggle sidebar, `A+/A-` zoom
+- Print-ready output (`Cmd+P`)
+- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+F` search, `Cmd+\` toggle sidebar, `A+/A-` zoom
 
 ## Install
 
@@ -66,10 +73,25 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | Window & Native APIs | [Tauri v2](https://v2.tauri.app/) (Rust) |
 | Frontend | React 18 + TypeScript + Vite |
 | Markdown | [marked](https://marked.js.org/) + [highlight.js](https://highlightjs.org/) |
+| Math | [KaTeX](https://katex.org/) |
+| Diagrams | [Mermaid](https://mermaid.js.org/) |
 | Editor | [CodeMirror 6](https://codemirror.net/) |
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.6.0
+
+- Document search (`Cmd+F`) with match highlighting and navigation
+- KaTeX math rendering — inline and display math
+- Export to standalone HTML with embedded styles
+- Recent files list in sidebar
+- Auto-save drafts to localStorage (24h expiry)
+- Error toast notifications for save/export failures
+- Print stylesheet for clean `Cmd+P` output
+- Empty mermaid block placeholder
+- Heading ID fix for special-character-only headings
+- Smarter mermaid loading — skip empty blocks
 
 ### v0.5.0
 
