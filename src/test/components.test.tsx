@@ -559,9 +559,9 @@ describe("Sidebar", () => {
     expect(screen.getByText("M")).toBeInTheDocument();
   });
 
-  it("renders the logo text 'MD Viewer'", () => {
+  it("renders the logo text 'MikeDown'", () => {
     render(<Sidebar />);
-    expect(screen.getByText("MD Viewer")).toBeInTheDocument();
+    expect(screen.getByText("MikeDown")).toBeInTheDocument();
   });
 
   it("renders an 'Open File' button", () => {

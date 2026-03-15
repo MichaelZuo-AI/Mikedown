@@ -71,7 +71,7 @@ describe("App — rendering", () => {
 
   it("renders the sidebar header logo text", () => {
     render(<App />);
-    expect(screen.getByText("MD Viewer")).toBeInTheDocument();
+    expect(screen.getByText("MikeDown")).toBeInTheDocument();
   });
 
   it("renders the Open File button in the sidebar", () => {

@@ -5,18 +5,21 @@ import { listen } from "@tauri-apps/api/event";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { watch } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
-import { openMarkdownFile, readDroppedFile } from "@/lib/fileOps";
+import { openMarkdownFile, readDroppedFile, saveMarkdownFile } from "@/lib/fileOps";
 import Sidebar from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import DropZone from "@/components/DropZone";
 import ProgressBar from "@/components/ProgressBar";
+import Editor from "@/components/Editor";
 
 const ALLOWED_EXTENSIONS = ["md", "markdown", "txt"];
 
 export default function App() {
   const theme = useAppStore((s) => s.theme);
+  const editMode = useAppStore((s) => s.editMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const toggleEditMode = useAppStore((s) => s.toggleEditMode);
   const loadMarkdown = useAppStore((s) => s.loadMarkdown);
   const setDragOver = useAppStore((s) => s.setDragOver);
   const rafRef = useRef(0);
@@ -79,14 +82,23 @@ export default function App() {
         e.preventDefault();
         toggleSidebar();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        saveMarkdownFile();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "e") {
+        e.preventDefault();
+        toggleEditMode();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar]);
+  }, [toggleSidebar, toggleEditMode]);
 
-  // Paste handler
+  // Paste handler — skip when in edit mode (CodeMirror handles paste)
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (useAppStore.getState().editMode) return;
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       const text = e.clipboardData?.getData("text/plain");
@@ -99,8 +111,6 @@ export default function App() {
   }, [loadMarkdown]);
 
   // File association: listen for OS file-open events + drain cold-start buffer.
-  // Register the event listener BEFORE calling get_opened_files so no events
-  // are lost between setting frontend_ready and attaching the listener.
   useEffect(() => {
     const unlisten = listen<string[]>("file-open", (event) => {
       if (event.payload.length > 0) {
@@ -121,10 +131,10 @@ export default function App() {
     };
   }, []);
 
-  // Watch current file for changes
+  // Watch current file for changes (only when NOT in edit mode to avoid overwriting edits)
   const filePath = useAppStore((s) => s.filePath);
   useEffect(() => {
-    if (!filePath) return;
+    if (!filePath || editMode) return;
 
     let cancelled = false;
     let stopWatching: (() => void) | undefined;
@@ -157,7 +167,7 @@ export default function App() {
       clearTimeout(debounceTimer);
       stopWatching?.();
     };
-  }, [filePath]);
+  }, [filePath, editMode]);
 
   // Scroll progress tracking
   const onScrollProgress = useCallback(() => {
@@ -184,9 +194,16 @@ export default function App() {
       <Sidebar />
       <div className="main">
         <Toolbar />
-        <div className="content-wrap" ref={wrapRef}>
-          <DropZone />
-          <MarkdownRenderer />
+        <div className={`content-area${editMode ? " split" : ""}`}>
+          {editMode && (
+            <div className="editor-pane">
+              <Editor />
+            </div>
+          )}
+          <div className="content-wrap" ref={wrapRef}>
+            <DropZone />
+            <MarkdownRenderer />
+          </div>
         </div>
       </div>
     </>

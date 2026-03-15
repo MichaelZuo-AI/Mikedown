@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/main/crates/tauri-schema-generator/schemas/config.schema.json",
-  "productName": "MD Viewer",
-  "version": "0.4.0",
-  "identifier": "com.aidreamworks.mdviewer",
+  "productName": "MikeDown",
+  "version": "0.5.0",
+  "identifier": "com.aidreamworks.mikedown",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -30,7 +30,7 @@
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "MD Viewer",
+        "title": "MikeDown",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

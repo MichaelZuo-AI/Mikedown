@@ -1,0 +1,213 @@
+name: Claude Auto-Fix Issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Specific issue number to fix (leave empty for all bug issues)"
+        required: false
+        type: string
+      max_issues:
+        description: "Max issues to process per run"
+        required: false
+        default: "3"
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  collect-issues:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.issues.outputs.matrix }}
+      has_issues: ${{ steps.issues.outputs.has_issues }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect eligible bug issues
+        id: issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SPECIFIC_ISSUE: ${{ inputs.issue_number }}
+          MAX_ISSUES: ${{ inputs.max_issues || '3' }}
+        run: |
+          if [ -n "$SPECIFIC_ISSUE" ]; then
+            # Fetch the specific issue
+            issue_json=$(gh issue view "$SPECIFIC_ISSUE" --json number,title,body 2>/dev/null || echo "")
+            if [ -z "$issue_json" ]; then
+              echo "Issue #$SPECIFIC_ISSUE not found"
+              echo "has_issues=false" >> "$GITHUB_OUTPUT"
+              echo 'matrix={"issue":[]}' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            issues="[$issue_json]"
+          else
+            # List open issues with bug label
+            issues=$(gh issue list --label bug --state open --json number,title,body --limit 20)
+          fi
+
+          # Filter out issues that already have an open PR on fix/issue-N branch
+          eligible="[]"
+          while IFS= read -r issue; do
+            number=$(echo "$issue" | jq -r '.number')
+            branch="fix/issue-${number}"
+
+            # Check if a PR already exists for this branch
+            existing_pr=$(gh pr list --head "$branch" --state open --json number --jq 'length')
+            if [ "$existing_pr" = "0" ]; then
+              eligible=$(echo "$eligible" | jq --argjson issue "$issue" '. + [$issue]')
+            else
+              echo "Skipping issue #$number — PR already exists on $branch"
+            fi
+          done < <(echo "$issues" | jq -c '.[]')
+
+          # Limit to max issues
+          eligible=$(echo "$eligible" | jq --argjson max "$MAX_ISSUES" '.[:$max]')
+
+          count=$(echo "$eligible" | jq 'length')
+          if [ "$count" = "0" ]; then
+            echo "No eligible issues found"
+            echo "has_issues=false" >> "$GITHUB_OUTPUT"
+            echo 'matrix={"issue":[]}' >> "$GITHUB_OUTPUT"
+          else
+            echo "Found $count eligible issue(s)"
+            echo "has_issues=true" >> "$GITHUB_OUTPUT"
+            echo "matrix={\"issue\":$(echo "$eligible" | jq -c)}" >> "$GITHUB_OUTPUT"
+          fi
+
+  fix-issue:
+    needs: collect-issues
+    if: needs.collect-issues.outputs.has_issues == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix: ${{ fromJson(needs.collect-issues.outputs.matrix) }}
+      max-parallel: 2
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Create fix branch
+        env:
+          ISSUE_NUMBER: ${{ matrix.issue.number }}
+        run: |
+          git checkout -b "fix/issue-${ISSUE_NUMBER}"
+
+      - name: Run Claude Code to fix issue
+        id: claude
+        timeout-minutes: 15
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_TITLE: ${{ matrix.issue.title }}
+          ISSUE_BODY: ${{ matrix.issue.body }}
+          ISSUE_NUMBER: ${{ matrix.issue.number }}
+        run: |
+          prompt=$(cat <<'PROMPT_END'
+          You are fixing a bug in a Tauri v2 + React 18 + TypeScript markdown viewer app.
+
+          Issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}
+
+          ${ISSUE_BODY}
+
+          Instructions:
+          1. Read the relevant code to understand the bug
+          2. Implement a minimal, focused fix
+          3. Run `pnpm build` to verify the fix compiles
+          4. Do NOT add tests, docs, or unrelated changes
+          PROMPT_END
+          )
+
+          # Substitute env vars into prompt
+          prompt=$(echo "$prompt" | envsubst)
+
+          npx @anthropic-ai/claude-code@latest --print \
+            --max-turns 30 \
+            --allowedTools "Read" "Glob" "Grep" "Edit" "Write" "Bash(pnpm test)" "Bash(pnpm build)" \
+            "$prompt" || true
+
+          # Check if any files were changed
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify fix
+        id: verify
+        if: steps.claude.outputs.changed == 'true'
+        run: |
+          pnpm build
+
+      - name: Commit, push, and create PR
+        if: steps.claude.outputs.changed == 'true' && steps.verify.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ matrix.issue.number }}
+          ISSUE_TITLE: ${{ matrix.issue.title }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          git commit -m "fix: ${ISSUE_TITLE} (#${ISSUE_NUMBER})"
+
+          branch="fix/issue-${ISSUE_NUMBER}"
+          git push origin "$branch"
+
+          pr_url=$(gh pr create \
+            --title "fix: ${ISSUE_TITLE}" \
+            --body "$(cat <<EOF
+          Closes #${ISSUE_NUMBER}
+
+          This fix was automatically generated by Claude Code.
+          Please review the changes before merging.
+
+          ---
+          *Automated by [Claude Auto-Fix Issues](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})*
+          EOF
+          )" \
+            --head "$branch" \
+            --base main)
+
+          echo "Created PR: $pr_url"
+
+          # Enable auto-merge (squash)
+          gh pr merge "$pr_url" --auto --squash || echo "Auto-merge not available — manual merge required"
+
+          # Comment on issue
+          gh issue comment "$ISSUE_NUMBER" --body "A fix has been proposed in ${pr_url}. It will auto-merge once CI passes."
+
+      - name: Handle no changes or failure
+        if: steps.claude.outputs.changed != 'true' || steps.verify.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ matrix.issue.number }}
+        run: |
+          branch="fix/issue-${ISSUE_NUMBER}"
+
+          # Clean up branch if it was pushed
+          git push origin --delete "$branch" 2>/dev/null || true
+
+          # Determine reason
+          if [ "${{ steps.claude.outputs.changed }}" != "true" ]; then
+            reason="Claude Code analyzed the issue but could not determine an automated fix."
+          else
+            reason="A fix was attempted but failed verification (build/test). Check the [workflow run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) for details."
+          fi
+
+          gh issue comment "$ISSUE_NUMBER" --body "$reason This issue needs manual attention."
+          gh issue edit "$ISSUE_NUMBER" --add-label "needs-human" || true

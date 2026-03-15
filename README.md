@@ -1,13 +1,14 @@
-# MD Viewer
+# MikeDown
 
-A fast, lightweight desktop Markdown viewer built with Tauri v2 + React.
+A fast, lightweight desktop Markdown editor and viewer built with Tauri v2 + React.
 
 ## Why
 
-AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — structured documents full of headings, code blocks, tables, and nested lists. To truly understand AI's reasoning process and make sense of its output, you need a reader that renders Markdown beautifully, not a plain-text editor. MD Viewer is built for exactly that.
+AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — structured documents full of headings, code blocks, tables, and nested lists. To truly understand AI's reasoning process and make sense of its output, you need a reader that renders Markdown beautifully, not a plain-text editor. MikeDown is built for exactly that — and now lets you edit too.
 
 ## Features
 
+- **Split-pane editor** with live preview (CodeMirror 6)
 - Dark/light theme with beautiful typography (Lora, DM Sans, JetBrains Mono)
 - Syntax-highlighted code blocks with one-click copy
 - Auto-generated table of contents with scroll-spy
@@ -16,7 +17,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - Drag-and-drop or paste markdown files
 - macOS file association — set as default app for `.md` files
 - macOS-native overlay titlebar
-- Keyboard shortcuts: `Cmd+O` open, `Cmd+\` toggle sidebar, `A+/A-` zoom
+- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+\` toggle sidebar, `A+/A-` zoom
 
 ## Install
 
@@ -24,7 +25,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 
 ```bash
 brew tap MichaelZuo-AI/tap
-brew install --cask md-viewer
+brew install --cask mikedown
 ```
 
 ### Manual Download
@@ -33,9 +34,9 @@ Grab the `.dmg` from the [Releases page](https://github.com/MichaelZuo-AI/Markdo
 
 | Platform | File |
 |---|---|
-| macOS (Apple Silicon) | `MD Viewer_x.x.x_aarch64.dmg` |
+| macOS (Apple Silicon) | `MikeDown_x.x.x_aarch64.dmg` |
 
-1. Open the `.dmg` and drag **MD Viewer** to your Applications folder
+1. Open the `.dmg` and drag **MikeDown** to your Applications folder
 2. On first launch: right-click the app → **Open** (required once for macOS Gatekeeper)
 
 ## Build from Source
@@ -65,9 +66,21 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | Window & Native APIs | [Tauri v2](https://v2.tauri.app/) (Rust) |
 | Frontend | React 18 + TypeScript + Vite |
 | Markdown | [marked](https://marked.js.org/) + [highlight.js](https://highlightjs.org/) |
+| Editor | [CodeMirror 6](https://codemirror.net/) |
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.5.0
+
+- Rename to **MikeDown**
+- Split-pane markdown editor with live preview (CodeMirror 6)
+- Save support (`Cmd+S`) with unsaved-changes indicator
+- Toggle edit mode with `Cmd+E` or toolbar button
+
+### v0.4.0
+
+- Mermaid diagram rendering
 
 ### v0.3.1
 

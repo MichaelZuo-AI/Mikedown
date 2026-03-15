@@ -186,6 +186,7 @@ body {
   transition: all 0.15s;
 }
 .tb-btn:hover { background: var(--border); color: var(--text); }
+.tb-btn-active { color: var(--accent); background: rgba(124,106,247,0.1); }
 
 .file-name {
   flex: 1;
@@ -200,6 +201,40 @@ body {
 }
 
 /* ── Content area ── */
+.content-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.content-area.split .editor-pane {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area.split .content-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+.editor-container .cm-editor {
+  height: 100%;
+}
+
+.editor-container .cm-editor.cm-focused {
+  outline: none;
+}
+
 .content-wrap {
   flex: 1;
   overflow-y: auto;

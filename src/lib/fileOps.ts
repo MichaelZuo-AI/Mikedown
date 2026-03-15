@@ -1,5 +1,5 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { readTextFile } from "@tauri-apps/plugin-fs";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 
 function extractFileName(path: string): string {
@@ -36,5 +36,31 @@ export async function readDroppedFile(filePath: string) {
     useAppStore.getState().loadMarkdown(content, name, filePath);
   } catch (err) {
     console.error("Failed to read dropped file:", err);
+  }
+}
+
+/**
+ * Saves the current markdown content to disk.
+ * If no filePath exists, opens a Save dialog first.
+ */
+export async function saveMarkdownFile() {
+  const store = useAppStore.getState();
+  let path = store.filePath;
+
+  if (!path) {
+    const selected = await save({
+      filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
+      defaultPath: store.fileName !== "No file opened" ? store.fileName : "untitled.md",
+    });
+    if (!selected) return;
+    path = selected;
+  }
+
+  try {
+    await writeTextFile(path, store.markdownContent);
+    const name = extractFileName(path);
+    useAppStore.setState({ filePath: path, fileName: name, dirty: false });
+  } catch (err) {
+    console.error("Failed to save file:", err);
   }
 }

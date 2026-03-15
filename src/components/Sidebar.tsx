@@ -9,7 +9,7 @@ export default function Sidebar() {
     <div className={`sidebar${collapsed ? " collapsed" : ""}`}>
       <div className="sidebar-header">
         <div className="logo">M</div>
-        <span className="logo-text">MD Viewer</span>
+        <span className="logo-text">MikeDown</span>
       </div>
       <button className="open-btn" onClick={openMarkdownFile}>
         <span>📂</span> Open File
