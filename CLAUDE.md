@@ -1,6 +1,6 @@
-# Markdown-Viewer
+# MikeDown
 
-Tauri v2 + React 18 + TypeScript desktop app for viewing Markdown files.
+Tauri v2 + React 18 + TypeScript desktop Markdown editor and viewer.
 
 ## Commands
 
