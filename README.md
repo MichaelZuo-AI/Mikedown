@@ -30,7 +30,7 @@ brew install --cask mikedown
 
 ### Manual Download
 
-Grab the `.dmg` from the [Releases page](https://github.com/MichaelZuo-AI/Markdown-Viewer/releases):
+Grab the `.dmg` from the [Releases page](https://github.com/MichaelZuo-AI/Mikedown/releases):
 
 | Platform | File |
 |---|---|
@@ -50,8 +50,8 @@ Grab the `.dmg` from the [Releases page](https://github.com/MichaelZuo-AI/Markdo
 ### Build & Run
 
 ```bash
-git clone https://github.com/MichaelZuo-AI/Markdown-Viewer.git
-cd Markdown-Viewer
+git clone https://github.com/MichaelZuo-AI/Mikedown.git
+cd Mikedown
 pnpm install
 pnpm tauri dev        # development (hot reload)
 pnpm tauri build      # production binary → src-tauri/target/release/bundle/
