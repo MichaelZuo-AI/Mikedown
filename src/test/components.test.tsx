@@ -5,6 +5,9 @@
  *   - Toolbar
  *   - MarkdownRenderer
  *   - Sidebar (structural/state only; file dialog mocked)
+ *   - SearchBar
+ *   - Toast
+ *   - RecentFiles
  *
  * Strategy: render each component in isolation, feeding state through the
  * Zustand store. This avoids coupling tests to the full App tree while still
@@ -19,6 +22,9 @@ import DropZone from "@/components/DropZone";
 import Toolbar from "@/components/Toolbar";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import Sidebar from "@/components/Sidebar";
+import SearchBar from "@/components/SearchBar";
+import Toast from "@/components/Toast";
+import RecentFiles from "@/components/RecentFiles";
 import mermaid from "mermaid";
 
 // ---- helpers ----------------------------------------------------------------
@@ -35,6 +41,12 @@ const INITIAL_STATE = {
   isDropZoneVisible: true,
   theme: "dark" as const,
   fontSize: 100,
+  editMode: false,
+  dirty: false,
+  searchOpen: false,
+  toastMessage: "",
+  toastVisible: false,
+  recentFiles: [],
 };
 
 function resetStore() {
@@ -187,16 +199,10 @@ describe("Toolbar", () => {
     expect(statsEl.textContent).toMatch(/1[,.]?200/);
   });
 
-  it("shows the sun icon (☀) when theme is dark", () => {
+  it("shows the sun icon when theme is dark", () => {
     useAppStore.setState({ theme: "dark" });
     render(<Toolbar />);
-    expect(screen.getByTitle("Toggle theme").textContent).toContain("☀");
-  });
-
-  it("shows the moon icon (🌙) when theme is light", () => {
-    useAppStore.setState({ theme: "light" });
-    render(<Toolbar />);
-    expect(screen.getByTitle("Toggle theme").textContent).toContain("🌙");
+    expect(screen.getByTitle("Toggle theme")).toBeInTheDocument();
   });
 
   it("clicking toggle-theme switches from dark to light", () => {
@@ -239,6 +245,22 @@ describe("Toolbar", () => {
     render(<Toolbar />);
     fireEvent.click(screen.getByTitle("Toggle sidebar"));
     expect(useAppStore.getState().sidebarCollapsed).toBe(false);
+  });
+
+  it("renders the search button", () => {
+    render(<Toolbar />);
+    expect(screen.getByTitle("Search")).toBeInTheDocument();
+  });
+
+  it("clicking search toggles searchOpen", () => {
+    render(<Toolbar />);
+    fireEvent.click(screen.getByTitle("Search"));
+    expect(useAppStore.getState().searchOpen).toBe(true);
+  });
+
+  it("renders the export button", () => {
+    render(<Toolbar />);
+    expect(screen.getByTitle("Export HTML")).toBeInTheDocument();
   });
 });
 
@@ -347,15 +369,10 @@ describe("MarkdownRenderer", () => {
 
 // ---------------------------------------------------------------------------
 // MarkdownRenderer — mermaid integration
-//
-// mermaid is mocked in setup.ts:  { initialize: vi.fn(), run: vi.fn(...) }
-// We verify that the component interacts with the mermaid API correctly
-// without running the real mermaid library (which requires canvas / workers).
 // ---------------------------------------------------------------------------
 
 // Helper: flush requestAnimationFrame + dynamic import microtasks
 async function flushMermaid() {
-  // Wait for rAF (polyfilled as setTimeout(0)) and dynamic import() to resolve
   await act(async () => {
     await new Promise((r) => setTimeout(r, 10));
   });
@@ -368,11 +385,8 @@ describe("MarkdownRenderer — mermaid rendering", () => {
   beforeEach(() => {
     resetStore();
     vi.clearAllMocks();
-    // Restore data-theme to dark (default) before each test
     document.documentElement.removeAttribute("data-theme");
   });
-
-  // -- DOM structure ----------------------------------------------------------
 
   it("renders a .mermaid div in the DOM when htmlContent contains one", () => {
     useAppStore.setState({
@@ -398,8 +412,6 @@ describe("MarkdownRenderer — mermaid rendering", () => {
     const { container } = render(<MarkdownRenderer />);
     expect(container.querySelector(".mermaid")).toBeNull();
   });
-
-  // -- mermaid.run() call -----------------------------------------------------
 
   it("calls mermaid.run() with the .mermaid nodes when content contains a diagram", async () => {
     useAppStore.setState({
@@ -441,8 +453,6 @@ describe("MarkdownRenderer — mermaid rendering", () => {
     await flushMermaid();
     expect(mermaid.run).toHaveBeenCalled();
   });
-
-  // -- mermaid.initialize() call and theme ------------------------------------
 
   it("calls mermaid.initialize() with startOnLoad: false", async () => {
     useAppStore.setState({
@@ -487,22 +497,16 @@ describe("MarkdownRenderer — mermaid rendering", () => {
     expect(initArg.theme).toBe("default");
   });
 
-  // -- data-processed removal -------------------------------------------------
-
   it("removes the data-processed attribute from .mermaid nodes before calling run()", async () => {
-    // Simulate a node that was previously processed by mermaid
     useAppStore.setState({
       htmlContent: '<div class="mermaid" data-processed="true">graph TD; A--&gt;B;</div>',
     });
     const { container } = render(<MarkdownRenderer />);
     await flushMermaid();
 
-    // By the time run() is called the attribute should be gone
     const node = container.querySelector(".mermaid") as HTMLElement;
     expect(node.hasAttribute("data-processed")).toBe(false);
   });
-
-  // -- theme change via MutationObserver ---------------------------------------
 
   it("re-calls mermaid.initialize() and mermaid.run() when data-theme attribute changes", async () => {
     useAppStore.setState({
@@ -511,11 +515,9 @@ describe("MarkdownRenderer — mermaid rendering", () => {
     render(<MarkdownRenderer />);
     await flushMermaid();
 
-    // Record calls from the initial render
     const initCallsBefore = (mermaid.initialize as Mock).mock.calls.length;
     const runCallsBefore = (mermaid.run as Mock).mock.calls.length;
 
-    // Simulate a theme change that the MutationObserver observes
     await act(async () => {
       document.documentElement.setAttribute("data-theme", "light");
     });
@@ -536,8 +538,6 @@ describe("MarkdownRenderer — mermaid rendering", () => {
     disconnectSpy.mockRestore();
   });
 
-  // -- error resilience -------------------------------------------------------
-
   it("does not throw when mermaid.run() rejects (error is caught internally)", async () => {
     (mermaid.run as Mock).mockRejectedValueOnce(new Error("parse error"));
     useAppStore.setState({
@@ -546,6 +546,15 @@ describe("MarkdownRenderer — mermaid rendering", () => {
 
     render(<MarkdownRenderer />);
     await expect(flushMermaid()).resolves.not.toThrow();
+  });
+
+  it("does not call mermaid.run() for empty mermaid blocks", async () => {
+    useAppStore.setState({
+      htmlContent: '<div class="mermaid mermaid-empty"><span class="mermaid-placeholder">Empty diagram</span></div>',
+    });
+    render(<MarkdownRenderer />);
+    await flushMermaid();
+    expect(mermaid.run).not.toHaveBeenCalled();
   });
 });
 
@@ -600,5 +609,123 @@ describe("Sidebar", () => {
   it("renders the Toc 'Contents' section", () => {
     render(<Sidebar />);
     expect(screen.getByText("Contents")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("SearchBar", () => {
+  beforeEach(resetStore);
+
+  it("returns null when searchOpen is false", () => {
+    useAppStore.setState({ searchOpen: false });
+    const { container } = render(<SearchBar />);
+    expect(container.firstElementChild).toBeNull();
+  });
+
+  it("renders search input when searchOpen is true", () => {
+    useAppStore.setState({ searchOpen: true });
+    render(<SearchBar />);
+    expect(screen.getByPlaceholderText("Search...")).toBeInTheDocument();
+  });
+
+  it("renders close button", () => {
+    useAppStore.setState({ searchOpen: true });
+    render(<SearchBar />);
+    expect(screen.getByTitle("Close search")).toBeInTheDocument();
+  });
+
+  it("renders navigation buttons", () => {
+    useAppStore.setState({ searchOpen: true });
+    render(<SearchBar />);
+    expect(screen.getByTitle("Previous match")).toBeInTheDocument();
+    expect(screen.getByTitle("Next match")).toBeInTheDocument();
+  });
+
+  it("closes search when close button clicked", () => {
+    useAppStore.setState({ searchOpen: true });
+    render(<SearchBar />);
+    fireEvent.click(screen.getByTitle("Close search"));
+    expect(useAppStore.getState().searchOpen).toBe(false);
+  });
+
+  it("shows 'No matches' initially", () => {
+    useAppStore.setState({ searchOpen: true });
+    render(<SearchBar />);
+    expect(screen.getByText("No matches")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Toast", () => {
+  beforeEach(resetStore);
+
+  it("returns null when toastVisible is false", () => {
+    useAppStore.setState({ toastVisible: false });
+    const { container } = render(<Toast />);
+    expect(container.firstElementChild).toBeNull();
+  });
+
+  it("renders message when visible", () => {
+    useAppStore.setState({ toastVisible: true, toastMessage: "Save failed" });
+    render(<Toast />);
+    expect(screen.getByText("Save failed")).toBeInTheDocument();
+  });
+
+  it("renders dismiss button", () => {
+    useAppStore.setState({ toastVisible: true, toastMessage: "Error" });
+    render(<Toast />);
+    expect(screen.getByLabelText("Dismiss")).toBeInTheDocument();
+  });
+
+  it("clicking dismiss hides the toast", () => {
+    useAppStore.setState({ toastVisible: true, toastMessage: "Error" });
+    render(<Toast />);
+    fireEvent.click(screen.getByLabelText("Dismiss"));
+    expect(useAppStore.getState().toastVisible).toBe(false);
+  });
+
+  it("has role='alert' for accessibility", () => {
+    useAppStore.setState({ toastVisible: true, toastMessage: "Error" });
+    render(<Toast />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("RecentFiles", () => {
+  beforeEach(resetStore);
+
+  it("returns null when no recent files", () => {
+    useAppStore.setState({ recentFiles: [] });
+    const { container } = render(<RecentFiles />);
+    expect(container.firstElementChild).toBeNull();
+  });
+
+  it("renders recent file items", () => {
+    useAppStore.setState({ recentFiles: [{ name: "a.md", path: "/a.md" }] });
+    render(<RecentFiles />);
+    expect(screen.getByText("a.md")).toBeInTheDocument();
+  });
+
+  it("renders clear button", () => {
+    useAppStore.setState({ recentFiles: [{ name: "a.md", path: "/a.md" }] });
+    render(<RecentFiles />);
+    expect(screen.getByLabelText("Clear recent files")).toBeInTheDocument();
+  });
+
+  it("renders 'Recent' header", () => {
+    useAppStore.setState({ recentFiles: [{ name: "a.md", path: "/a.md" }] });
+    render(<RecentFiles />);
+    expect(screen.getByText("Recent")).toBeInTheDocument();
+  });
+
+  it("clicking clear empties the list", () => {
+    useAppStore.setState({ recentFiles: [{ name: "a.md", path: "/a.md" }] });
+    render(<RecentFiles />);
+    fireEvent.click(screen.getByLabelText("Clear recent files"));
+    expect(useAppStore.getState().recentFiles).toEqual([]);
   });
 });

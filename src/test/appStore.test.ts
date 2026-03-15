@@ -9,7 +9,7 @@
  * before every test using setState so tests remain fully isolated.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useAppStore } from "@/store/appStore";
 
 // ---- helpers ----------------------------------------------------------------
@@ -24,12 +24,19 @@ const INITIAL_STATE = {
   sidebarCollapsed: false,
   isDragOver: false,
   isDropZoneVisible: true,
-  theme: "dark",
+  theme: "dark" as const,
   fontSize: 100,
-} as const;
+  editMode: false,
+  dirty: false,
+  searchOpen: false,
+  toastMessage: "",
+  toastVisible: false,
+  recentFiles: [],
+};
 
 function resetStore() {
   useAppStore.setState(INITIAL_STATE);
+  try { localStorage.clear(); } catch { /* noop */ }
 }
 
 function get() {
@@ -352,5 +359,191 @@ describe("appStore — action purity (no unintended side effects)", () => {
     // isDropZoneVisible should remain at its default
     expect(get().isDropZoneVisible).toBe(true);
     expect(get().sidebarCollapsed).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("appStore — search", () => {
+  beforeEach(resetStore);
+
+  it("defaults searchOpen to false", () => {
+    expect(get().searchOpen).toBe(false);
+  });
+
+  it("toggleSearch opens search when closed", () => {
+    get().toggleSearch();
+    expect(get().searchOpen).toBe(true);
+  });
+
+  it("toggleSearch closes search when open", () => {
+    useAppStore.setState({ searchOpen: true });
+    get().toggleSearch();
+    expect(get().searchOpen).toBe(false);
+  });
+
+  it("setSearchOpen sets searchOpen to true", () => {
+    get().setSearchOpen(true);
+    expect(get().searchOpen).toBe(true);
+  });
+
+  it("setSearchOpen sets searchOpen to false", () => {
+    useAppStore.setState({ searchOpen: true });
+    get().setSearchOpen(false);
+    expect(get().searchOpen).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("appStore — toast", () => {
+  beforeEach(resetStore);
+
+  it("defaults toastVisible to false", () => {
+    expect(get().toastVisible).toBe(false);
+  });
+
+  it("defaults toastMessage to empty string", () => {
+    expect(get().toastMessage).toBe("");
+  });
+
+  it("showToast sets message and visible", () => {
+    get().showToast("Error occurred");
+    expect(get().toastMessage).toBe("Error occurred");
+    expect(get().toastVisible).toBe(true);
+  });
+
+  it("dismissToast sets visible to false", () => {
+    get().showToast("Error");
+    get().dismissToast();
+    expect(get().toastVisible).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("appStore — recent files", () => {
+  beforeEach(resetStore);
+
+  it("defaults recentFiles to empty array", () => {
+    expect(get().recentFiles).toEqual([]);
+  });
+
+  it("addRecentFile adds a file to the list", () => {
+    get().addRecentFile("test.md", "/path/test.md");
+    expect(get().recentFiles).toHaveLength(1);
+    expect(get().recentFiles[0]).toEqual({ name: "test.md", path: "/path/test.md" });
+  });
+
+  it("addRecentFile puts newest first", () => {
+    get().addRecentFile("a.md", "/a.md");
+    get().addRecentFile("b.md", "/b.md");
+    expect(get().recentFiles[0].name).toBe("b.md");
+  });
+
+  it("addRecentFile deduplicates by path", () => {
+    get().addRecentFile("a.md", "/a.md");
+    get().addRecentFile("b.md", "/b.md");
+    get().addRecentFile("a.md", "/a.md");
+    expect(get().recentFiles).toHaveLength(2);
+    expect(get().recentFiles[0].name).toBe("a.md");
+  });
+
+  it("addRecentFile limits to 10 entries", () => {
+    for (let i = 0; i < 15; i++) {
+      get().addRecentFile(`file${i}.md`, `/path/file${i}.md`);
+    }
+    expect(get().recentFiles).toHaveLength(10);
+  });
+
+  it("addRecentFile does nothing for empty path", () => {
+    get().addRecentFile("test.md", "");
+    expect(get().recentFiles).toEqual([]);
+  });
+
+  it("clearRecentFiles empties the list", () => {
+    get().addRecentFile("a.md", "/a.md");
+    get().clearRecentFiles();
+    expect(get().recentFiles).toEqual([]);
+  });
+
+  it("persists to localStorage", () => {
+    get().addRecentFile("a.md", "/a.md");
+    const stored = JSON.parse(localStorage.getItem("mikedown-recent-files") || "[]");
+    expect(stored).toHaveLength(1);
+  });
+
+  it("clearRecentFiles removes from localStorage", () => {
+    get().addRecentFile("a.md", "/a.md");
+    get().clearRecentFiles();
+    expect(localStorage.getItem("mikedown-recent-files")).toBeNull();
+  });
+
+  it("loadMarkdown adds to recent files when path is provided", () => {
+    get().loadMarkdown("# Test", "test.md", "/path/test.md");
+    expect(get().recentFiles).toHaveLength(1);
+    expect(get().recentFiles[0].path).toBe("/path/test.md");
+  });
+
+  it("loadMarkdown does not add to recent files without path", () => {
+    get().loadMarkdown("# Test", "test.md");
+    expect(get().recentFiles).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("appStore — auto-save draft", () => {
+  beforeEach(() => {
+    resetStore();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("setMarkdownContent saves draft to localStorage after debounce", () => {
+    get().setMarkdownContent("# Draft content");
+    vi.advanceTimersByTime(1100);
+    const draft = localStorage.getItem("mikedown-draft");
+    expect(draft).not.toBeNull();
+    expect(JSON.parse(draft!).content).toBe("# Draft content");
+  });
+
+  it("restoreDraft loads saved draft", () => {
+    localStorage.setItem("mikedown-draft", JSON.stringify({
+      content: "# Saved",
+      fileName: "draft.md",
+      filePath: "",
+      timestamp: Date.now(),
+    }));
+    get().restoreDraft();
+    expect(get().markdownContent).toBe("# Saved");
+    expect(get().dirty).toBe(true);
+  });
+
+  it("restoreDraft ignores drafts older than 24 hours", () => {
+    localStorage.setItem("mikedown-draft", JSON.stringify({
+      content: "# Old",
+      fileName: "old.md",
+      filePath: "",
+      timestamp: Date.now() - 25 * 60 * 60 * 1000,
+    }));
+    get().restoreDraft();
+    expect(get().markdownContent).toBe("");
+  });
+
+  it("clearDraft removes from localStorage", () => {
+    localStorage.setItem("mikedown-draft", "test");
+    get().clearDraft();
+    expect(localStorage.getItem("mikedown-draft")).toBeNull();
+  });
+
+  it("markClean also clears draft", () => {
+    localStorage.setItem("mikedown-draft", "test");
+    get().markClean();
+    expect(localStorage.getItem("mikedown-draft")).toBeNull();
+    expect(get().dirty).toBe(false);
   });
 });

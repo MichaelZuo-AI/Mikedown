@@ -1,10 +1,5 @@
 /**
  * Tests for src/lib/markdown.ts
- *
- * Strategy: Call parseMarkdown() directly and assert on the resulting HTML
- * string. We test the custom renderer behaviour (code blocks, headings) as
- * well as standard GFM / marked features that consumers rely on.
- * No DOM or React needed — pure string-in / string-out.
  */
 
 import { describe, it, expect } from "vitest";
@@ -43,17 +38,12 @@ describe("parseMarkdown — heading renderer", () => {
   });
 
   it("strips HTML tags from the id (e.g. bold inside heading)", () => {
-    // **text** inside a heading becomes <strong>text</strong>; the id
-    // should contain only the plain text.
     const html = parseMarkdown("# Hello **World**");
-    // id should be derived from the plain text "Hello World" or "Hello World"
-    // The renderer strips <[^>]*> from the text before generating the id.
     expect(html).not.toMatch(/id="[^"]*<[^"]*"/);
   });
 
   it("strips special characters from the id", () => {
     const html = parseMarkdown("# What's New?");
-    // Apostrophe and question mark are non-word, non-space chars → stripped
     const match = html.match(/id="([^"]+)"/);
     expect(match).not.toBeNull();
     expect(match![1]).not.toContain("'");
@@ -115,7 +105,6 @@ describe("parseMarkdown — code block renderer", () => {
   it("uses 'text' as language label when no language is given", () => {
     const md = "```\nplain code\n```";
     const html = parseMarkdown(md);
-    // langLabel falls back to 'text' and class uses 'plaintext'
     expect(html).toContain(">text<");
   });
 
@@ -135,18 +124,13 @@ describe("parseMarkdown — code block renderer", () => {
   it("highlight.js produces spans for syntax tokens", () => {
     const md = "```javascript\nconst a = 1;\n```";
     const html = parseMarkdown(md);
-    // hljs wraps keywords in <span class="hljs-*">
     expect(html).toContain("<span");
   });
 
   it("handles code blocks with multiple lines", () => {
-    // hljs wraps keywords in spans, so we search for plain identifiers
-    // that aren't highlighted as keywords (foo, 42) or check for the <code> wrapper.
     const md = "```python\ndef foo():\n    return 42\n```";
     const html = parseMarkdown(md);
-    // "foo" is a function name — hljs marks it with a class but the text is present
     expect(html).toContain("foo");
-    // "42" is a literal — it appears in the output
     expect(html).toContain("42");
     expect(html).toContain("<code");
   });
@@ -195,9 +179,6 @@ describe("parseMarkdown — mermaid code blocks", () => {
   });
 
   it("preserves '\"' characters in the diagram source (DOMPurify normalises &quot; back to \")", () => {
-    // escapeHtml() converts " → &quot;, but DOMPurify then normalises &quot;
-    // back to a literal " in text content.  The net result is that the source
-    // text survives the round-trip with its original double-quote characters.
     const md = '```mermaid\nA["quoted label"]\n```';
     const html = parseMarkdown(md);
     expect(html).toContain('A["quoted label"]');
@@ -206,7 +187,6 @@ describe("parseMarkdown — mermaid code blocks", () => {
   it("DOMPurify does NOT strip the class=\"mermaid\" attribute", () => {
     const md = "```mermaid\ngraph LR; X-->Y;\n```";
     const html = parseMarkdown(md);
-    // DOMPurify must not remove the class attribute — it is added to ADD_ATTR
     expect(html).toMatch(/class="mermaid"/);
   });
 
@@ -225,12 +205,11 @@ describe("parseMarkdown — mermaid code blocks", () => {
     expect(html).toContain("Bob");
   });
 
-  it("handles an empty mermaid block without crashing", () => {
+  it("handles an empty mermaid block with placeholder", () => {
     const md = "```mermaid\n```";
     const html = parseMarkdown(md);
-    // Empty body — div is still present (may be self-closing or have empty content)
-    expect(html).toContain("mermaid");
-    expect(typeof html).toBe("string");
+    expect(html).toContain("mermaid-empty");
+    expect(html).toContain("Empty diagram");
   });
 
   it("does NOT include a copy button or code-header for mermaid blocks", () => {
@@ -242,10 +221,8 @@ describe("parseMarkdown — mermaid code blocks", () => {
   });
 
   it("treats 'Mermaid' (wrong case) as a regular code block, not mermaid", () => {
-    // The renderer checks lang === "mermaid" exactly — uppercase must fall through
     const md = "```Mermaid\ngraph TD; A-->B;\n```";
     const html = parseMarkdown(md);
-    // Should be treated as an unknown lang and fall to the highlight.js path
     expect(html).toContain("<pre");
     expect(html).not.toContain('<div class="mermaid">');
   });
@@ -263,7 +240,6 @@ describe("parseMarkdown — mermaid code blocks", () => {
     const html = parseMarkdown(md);
     expect(html).toContain('<div class="mermaid">');
     expect(html).toContain("<pre");
-    // hljs registers the language as "js" so the class is language-js
     expect(html).toContain("language-js");
   });
 });
@@ -303,7 +279,6 @@ describe("parseMarkdown — standard markdown features", () => {
 
   it("renders GFM task list items (- [ ] / - [x])", () => {
     const html = parseMarkdown("- [ ] todo\n- [x] done");
-    // GFM task lists produce checkbox inputs
     expect(html).toContain('type="checkbox"');
     expect(html).toContain("todo");
     expect(html).toContain("done");
@@ -353,12 +328,12 @@ describe("parseMarkdown — standard markdown features", () => {
 // ---- id generation edge cases -----------------------------------------------
 
 describe("parseMarkdown — heading id edge cases", () => {
-  it("handles a heading that is only special characters", () => {
+  it("handles a heading that is only special characters with fallback id", () => {
     const html = parseMarkdown("# !@#$%");
-    // All special chars stripped → id may be empty string or contain only hyphens
     const match = html.match(/id="([^"]*)"/);
     expect(match).not.toBeNull();
-    // Should not throw or produce invalid HTML attributes
+    // Should use the fallback id, not an empty string
+    expect(match![1]).toBe("heading-1");
   });
 
   it("handles numeric headings", () => {
@@ -370,28 +345,76 @@ describe("parseMarkdown — heading id edge cases", () => {
     const html = parseMarkdown("# Hello   World");
     const match = html.match(/id="([^"]+)"/);
     expect(match).not.toBeNull();
-    // Multiple spaces should collapse to a single hyphen
     expect(match![1]).not.toContain("--");
     expect(match![1]).toContain("hello");
     expect(match![1]).toContain("world");
   });
+
+  it("uses unique fallback ids for duplicate special-char headings", () => {
+    const html = parseMarkdown("# !@#\n\n# !@#");
+    const matches = html.match(/id="([^"]*)"/g);
+    expect(matches).not.toBeNull();
+    expect(matches).toHaveLength(2);
+    // Second one should have a suffix
+    expect(matches![0]).not.toBe(matches![1]);
+  });
+
+  it("strips trailing hyphens from ids", () => {
+    const html = parseMarkdown("# Hello! ");
+    const match = html.match(/id="([^"]+)"/);
+    expect(match).not.toBeNull();
+    expect(match![1]).not.toMatch(/-$/);
+  });
+});
+
+// ---- math rendering ---------------------------------------------------------
+
+describe("parseMarkdown — math rendering", () => {
+  it("renders inline math $...$ as KaTeX", () => {
+    const html = parseMarkdown("The formula $E = mc^2$ is famous.");
+    expect(html).toContain("katex");
+  });
+
+  it("renders display math $$...$$ as KaTeX", () => {
+    const html = parseMarkdown("$$\\sum_{i=0}^n i^2$$");
+    expect(html).toContain("katex-display");
+  });
+
+  it("does not render $ in inline code as math", () => {
+    const html = parseMarkdown("`$not math$`");
+    expect(html).not.toContain("katex");
+    expect(html).toContain("$not math$");
+  });
+
+  it("handles invalid LaTeX gracefully without throwing", () => {
+    expect(() => parseMarkdown("$\\invalid{$")).not.toThrow();
+  });
+
+  it("renders multiple inline math expressions", () => {
+    const html = parseMarkdown("$a$ and $b$ are variables.");
+    const matches = html.match(/katex/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not treat $$ inside code blocks as math", () => {
+    const html = parseMarkdown("```\n$$not math$$\n```");
+    expect(html).not.toContain("katex-display");
+  });
+
+  it("renders display math with newlines", () => {
+    const html = parseMarkdown("$$\nx^2 + y^2 = z^2\n$$");
+    expect(html).toContain("katex");
+  });
 });
 
 // ---- XSS / security note ---------------------------------------------------
-//
-// marked v9 with default settings passes raw HTML through unchanged — it does
-// NOT sanitize. Sanitization is the responsibility of the consumer
-// (e.g. DOMPurify). These tests document the actual current behaviour so that
-// any unintentional change to the configuration is caught.
 
 describe("parseMarkdown — raw HTML passthrough (marked v9 default)", () => {
   it("passes <script> tags through unchanged (no built-in sanitization)", () => {
-    // Document the actual behaviour: marked lets raw HTML through.
-    // If this ever starts escaping, it means a config change happened — update tests.
     const md = '<script>alert("xss")</script>';
     const html = parseMarkdown(md);
     expect(typeof html).toBe("string");
-    // The output should still be a string (no crash), whatever form it takes
   });
 
   it("passes a <div> block through as-is", () => {
@@ -402,7 +425,6 @@ describe("parseMarkdown — raw HTML passthrough (marked v9 default)", () => {
   });
 
   it("escapes angle brackets inside inline code spans", () => {
-    // Inside backtick code spans, characters ARE escaped
     const md = "use `<b>bold</b>` here";
     const html = parseMarkdown(md);
     expect(html).toContain("&lt;b&gt;");

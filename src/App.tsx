@@ -8,10 +8,12 @@ import { useAppStore } from "@/store/appStore";
 import { openMarkdownFile, readDroppedFile, saveMarkdownFile } from "@/lib/fileOps";
 import Sidebar from "@/components/Sidebar";
 import Toolbar from "@/components/Toolbar";
+import SearchBar from "@/components/SearchBar";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import DropZone from "@/components/DropZone";
 import ProgressBar from "@/components/ProgressBar";
 import Editor from "@/components/Editor";
+import Toast from "@/components/Toast";
 
 const ALLOWED_EXTENSIONS = ["md", "markdown", "txt"];
 
@@ -20,6 +22,7 @@ export default function App() {
   const editMode = useAppStore((s) => s.editMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleEditMode = useAppStore((s) => s.toggleEditMode);
+  const toggleSearch = useAppStore((s) => s.toggleSearch);
   const loadMarkdown = useAppStore((s) => s.loadMarkdown);
   const setDragOver = useAppStore((s) => s.setDragOver);
   const rafRef = useRef(0);
@@ -33,6 +36,14 @@ export default function App() {
       theme === "light" ? "light" : "",
     );
   }, [theme]);
+
+  // Restore draft on mount (only if no file was opened via CLI/association)
+  useEffect(() => {
+    const store = useAppStore.getState();
+    if (!store.filePath && !store.markdownContent) {
+      store.restoreDraft();
+    }
+  }, []);
 
   // Tauri drag-drop listener
   useEffect(() => {
@@ -90,10 +101,14 @@ export default function App() {
         e.preventDefault();
         toggleEditMode();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        e.preventDefault();
+        toggleSearch();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar, toggleEditMode]);
+  }, [toggleSidebar, toggleEditMode, toggleSearch]);
 
   // Paste handler — skip when in edit mode (CodeMirror handles paste)
   useEffect(() => {
@@ -194,6 +209,7 @@ export default function App() {
       <Sidebar />
       <div className="main">
         <Toolbar />
+        <SearchBar />
         <div className={`content-area${editMode ? " split" : ""}`}>
           {editMode && (
             <div className="editor-pane">
@@ -206,6 +222,7 @@ export default function App() {
           </div>
         </div>
       </div>
+      <Toast />
     </>
   );
 }

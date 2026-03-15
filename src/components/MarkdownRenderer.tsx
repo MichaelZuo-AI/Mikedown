@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useAppStore } from "@/store/appStore";
 
 async function renderMermaidNodes(el: HTMLElement) {
-  const nodes = el.querySelectorAll<HTMLElement>(".mermaid");
+  const nodes = el.querySelectorAll<HTMLElement>(".mermaid:not(.mermaid-empty)");
   if (nodes.length === 0) return;
 
   const mermaid = (await import("mermaid")).default;

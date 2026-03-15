@@ -60,7 +60,9 @@ export async function saveMarkdownFile() {
     await writeTextFile(path, store.markdownContent);
     const name = extractFileName(path);
     useAppStore.setState({ filePath: path, fileName: name, dirty: false });
+    try { localStorage.removeItem("mikedown-draft"); } catch { /* noop */ }
   } catch (err) {
     console.error("Failed to save file:", err);
+    useAppStore.getState().showToast("Failed to save file. Please try again.");
   }
 }

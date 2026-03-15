@@ -1,7 +1,7 @@
 {
   "name": "mikedown",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -26,6 +26,7 @@
     "codemirror": "^6.0.2",
     "dompurify": "^3.3.1",
     "highlight.js": "^11.9.0",
+    "katex": "^0.16.38",
     "marked": "^9.1.6",
     "mermaid": "~11.12.3",
     "react": "^18.3.1",
@@ -37,6 +38,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/katex": "^0.16.8",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",

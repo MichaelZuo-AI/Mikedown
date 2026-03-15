@@ -2,6 +2,23 @@ import "@testing-library/jest-dom";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 
+// Polyfill localStorage for jsdom workers that may not have the full Storage API
+if (typeof globalThis.localStorage === "undefined" || typeof globalThis.localStorage?.getItem !== "function") {
+  const store: Record<string, string> = {};
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: (key: string, value: string) => { store[key] = String(value); },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { for (const key of Object.keys(store)) delete store[key]; },
+      get length() { return Object.keys(store).length; },
+      key: (index: number) => Object.keys(store)[index] ?? null,
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 // Polyfill requestAnimationFrame / cancelAnimationFrame for jsdom
 if (typeof globalThis.requestAnimationFrame === "undefined") {
   globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0) as unknown as number;
@@ -26,10 +43,13 @@ vi.mock("@tauri-apps/api/window", () => ({
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: vi.fn(),
+  save: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: vi.fn(),
+  writeTextFile: vi.fn(() => Promise.resolve()),
+  watch: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -50,5 +70,20 @@ vi.mock("mermaid", () => ({
   default: {
     initialize: vi.fn(),
     run: vi.fn(() => Promise.resolve()),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Mock katex — the real library works fine in jsdom but we mock for speed
+// and to verify our integration logic.
+// ---------------------------------------------------------------------------
+
+vi.mock("katex", () => ({
+  default: {
+    renderToString: vi.fn((tex: string, opts?: { displayMode?: boolean }) =>
+      opts?.displayMode
+        ? `<span class="katex-display">${tex}</span>`
+        : `<span class="katex">${tex}</span>`
+    ),
   },
 }));

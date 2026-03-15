@@ -1,5 +1,6 @@
 /* highlight.js theme — dark default */
 @import "highlight.js/styles/github-dark.css";
+@import "katex/dist/katex.min.css";
 
 :root {
   --bg: #0f0f11;
@@ -117,6 +118,57 @@ body {
 }
 .open-btn:hover { background: linear-gradient(135deg, rgba(124,106,247,0.2), rgba(124,106,247,0.1)); }
 
+/* ── Recent files ── */
+.recent-files {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 6px 8px;
+}
+
+.recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.recent-clear {
+  font-size: 10px;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.recent-clear:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.recent-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent-item:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
 /* ── ToC ── */
 .toc {
   flex: 1;
@@ -198,6 +250,72 @@ body {
 .word-count {
   font-size: 11px; color: var(--text-dim);
   white-space: nowrap;
+}
+
+/* ── Search bar ── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.search-input {
+  flex: 1;
+  max-width: 300px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-count {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+.search-nav, .search-close {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.search-close { font-size: 12px; }
+
+.search-nav:hover, .search-close:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+mark.search-highlight {
+  background: rgba(124, 106, 247, 0.2);
+  color: inherit;
+  padding: 1px 0;
+  border-radius: 2px;
+}
+
+mark.search-current {
+  background: rgba(124, 106, 247, 0.5);
 }
 
 /* ── Content area ── */
@@ -455,6 +573,62 @@ body {
   border-color: var(--accent2);
 }
 
+.content .mermaid.mermaid-empty {
+  justify-content: center;
+  align-items: center;
+}
+
+.mermaid-placeholder {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ── KaTeX math ── */
+.math-error {
+  color: var(--accent2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.content .katex-display {
+  margin: 1.2em 0;
+  overflow-x: auto;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  color: var(--accent2);
+  font-size: 13px;
+  z-index: 200;
+  animation: toast-in 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+}
+
 /* ── Progress bar ── */
 .progress {
   position: fixed; top: 0; left: 0;
@@ -463,4 +637,34 @@ body {
   z-index: 100;
   transition: width 0.1s;
   width: 0%;
+}
+
+/* ── Print styles ── */
+@media print {
+  .sidebar, .toolbar, .progress, .drop-zone, .editor-pane,
+  .search-bar, .code-header .copy-btn, .toast { display: none !important; }
+
+  #root { display: block; }
+  .main { display: block; }
+  .content-area { display: block; overflow: visible; }
+  .content-wrap { display: block; overflow: visible; }
+
+  .content {
+    max-width: 100%;
+    padding: 0;
+    font-size: 12pt;
+    color: #000;
+  }
+
+  .content h1, .content h2, .content h3, .content h4 { color: #000; }
+  .content p, .content li, .content td { color: #333; }
+  .content a { color: #7c6af7; text-decoration: underline; }
+  .content pre { border: 1px solid #ddd; }
+  .content code { background: #f5f5f5; border-color: #ddd; color: #333; }
+  .content blockquote { border-left-color: #999; color: #555; }
+  .content table { border-color: #ddd; }
+  .content th { background: #f5f5f5; color: #333; }
+  .content td { color: #333; }
+  .content img { max-width: 100%; }
+  .content .mermaid { background: #fff; border-color: #ddd; }
 }

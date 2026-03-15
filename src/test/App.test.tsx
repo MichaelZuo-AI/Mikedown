@@ -1,16 +1,5 @@
 /**
  * Tests for src/App.tsx
- *
- * Strategy: Render the App component inside a jsdom environment. Tauri APIs
- * are already mocked globally in setup.ts. Child components (Sidebar, Toolbar,
- * MarkdownRenderer, DropZone, ProgressBar) are rendered for real — they are
- * simple enough that we avoid an over-mocked test suite. We focus on:
- *
- *   1. Structural rendering (children present, layout classes)
- *   2. Theme effect (data-theme attribute on <html>)
- *   3. Keyboard shortcut handling
- *   4. Paste handler
- *   5. Cleanup on unmount
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from "vitest";
@@ -34,12 +23,19 @@ const INITIAL_STATE = {
   sidebarCollapsed: false,
   isDragOver: false,
   isDropZoneVisible: true,
-  theme: "dark",
+  theme: "dark" as const,
   fontSize: 100,
-} as const;
+  editMode: false,
+  dirty: false,
+  searchOpen: false,
+  toastMessage: "",
+  toastVisible: false,
+  recentFiles: [],
+};
 
 function resetStore() {
   useAppStore.setState(INITIAL_STATE);
+  try { localStorage.clear(); } catch { /* jsdom may not have localStorage */ }
 }
 
 // Helper: simulate keyboard event on window
@@ -56,7 +52,6 @@ describe("App — rendering", () => {
 
   it("renders without crashing", () => {
     render(<App />);
-    // If rendering throws, the test will fail automatically
   });
 
   it("renders the toolbar with the default file name", () => {
@@ -76,7 +71,6 @@ describe("App — rendering", () => {
 
   it("renders the Open File button in the sidebar", () => {
     render(<App />);
-    // Sidebar has an "Open File" button
     const openBtns = screen.getAllByText(/Open File/i);
     expect(openBtns.length).toBeGreaterThanOrEqual(1);
   });
@@ -102,7 +96,6 @@ describe("App — rendering", () => {
 describe("App — theme effect", () => {
   beforeEach(() => {
     resetStore();
-    // Clear any previous data-theme attribute
     document.documentElement.removeAttribute("data-theme");
   });
 
@@ -171,9 +164,6 @@ describe("App — keyboard shortcuts", () => {
   });
 
   it("Cmd+O calls openMarkdownFile (mocked — no crash)", () => {
-    // openMarkdownFile is imported from fileOps and calls Tauri open().
-    // Tauri open() is mocked to return null in setup.ts.
-    // We simply verify the keyboard handler runs without throwing.
     render(<App />);
     expect(() => pressKey("o", { metaKey: true })).not.toThrow();
   });
@@ -190,14 +180,24 @@ describe("App — keyboard shortcuts", () => {
     expect(removeEventListenerSpy).toHaveBeenCalledWith("keydown", expect.any(Function));
     removeEventListenerSpy.mockRestore();
   });
+
+  it("Cmd+F toggles search", () => {
+    render(<App />);
+    expect(useAppStore.getState().searchOpen).toBe(false);
+    pressKey("f", { metaKey: true });
+    expect(useAppStore.getState().searchOpen).toBe(true);
+  });
+
+  it("Ctrl+F toggles search", () => {
+    render(<App />);
+    pressKey("f", { ctrlKey: true });
+    expect(useAppStore.getState().searchOpen).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
 
 describe("App — paste handler", () => {
-  // Each paste test must explicitly unmount to trigger useEffect cleanup and
-  // remove the window paste listener — otherwise the listener leaks into
-  // the next test and fires again when we dispatch a new paste event.
   beforeEach(() => {
     resetStore();
   });
@@ -220,7 +220,6 @@ describe("App — paste handler", () => {
     fireEvent.paste(window, {
       clipboardData: { getData: () => "just plain text" },
     });
-    // Any non-empty text should be accepted as markdown
     expect(useAppStore.getState().markdownContent).toBe("just plain text");
     expect(useAppStore.getState().fileName).toBe("Pasted");
     unmount();
@@ -236,8 +235,6 @@ describe("App — paste handler", () => {
   });
 
   it("loads whitespace-only text as markdown (trim check for emptiness)", () => {
-    // The guard is text.trim().length > 0 — whitespace-only is ignored, but
-    // indented markdown is not whitespace-only so it is loaded.
     const { unmount } = render(<App />);
     const md = "  # Indented heading";
 
@@ -273,8 +270,6 @@ describe("App — Tauri drag-drop integration", () => {
     });
 
     render(<App />);
-
-    // Give the useEffect Promise time to resolve
     await act(async () => {});
 
     expect(mockOnDragDrop).toHaveBeenCalledOnce();
@@ -288,7 +283,7 @@ describe("App — Tauri drag-drop integration", () => {
     });
 
     const { unmount } = render(<App />);
-    await act(async () => {}); // let Promise resolve
+    await act(async () => {});
 
     unmount();
     expect(mockUnlisten).toHaveBeenCalledOnce();
@@ -363,9 +358,6 @@ describe("App — Tauri drag-drop integration", () => {
 // ---------------------------------------------------------------------------
 
 describe("App — cold start: invoke('get_opened_files')", () => {
-  // These tests verify the useEffect that runs once on mount and calls the
-  // Tauri command to drain any paths buffered before the frontend was ready.
-
   beforeEach(() => {
     resetStore();
     vi.clearAllMocks();
@@ -438,9 +430,6 @@ describe("App — cold start: invoke('get_opened_files')", () => {
 // ---------------------------------------------------------------------------
 
 describe("App — warm open: listen('file-open')", () => {
-  // These tests verify the useEffect that registers a persistent Tauri event
-  // listener so files opened while the app is already running are handled.
-
   beforeEach(() => {
     resetStore();
     vi.clearAllMocks();
@@ -475,7 +464,6 @@ describe("App — warm open: listen('file-open')", () => {
     await act(async () => {});
 
     unmount();
-    // The cleanup calls unlisten.then(fn => fn()), so we give it a tick
     await act(async () => {});
 
     expect(mockUnlisten).toHaveBeenCalledOnce();
