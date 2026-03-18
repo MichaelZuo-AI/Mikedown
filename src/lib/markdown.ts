@@ -147,8 +147,10 @@ export function parseMarkdown(content: string): string {
   idCounts = new Map();
   const processed = renderMath(content);
   const raw = marked.parse(processed) as string;
-  return DOMPurify.sanitize(raw, {
+  const sanitized = DOMPurify.sanitize(raw, {
     ADD_ATTR: ["data-copy"],
     ADD_TAGS: ["math", "semantics", "mrow", "mi", "mo", "mn", "msup", "msub", "mfrac", "msqrt", "mroot", "mover", "munder", "mtable", "mtr", "mtd", "mspace", "mtext", "annotation"],
   });
+  // Wrap <table> elements in a scrollable container for wide tables
+  return sanitized.replace(/<table>/g, '<div class="table-wrapper"><table>').replace(/<\/table>/g, '</table></div>');
 }

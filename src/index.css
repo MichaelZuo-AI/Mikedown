@@ -529,8 +529,19 @@ mark.search-current {
   margin: 2em 0;
 }
 
+.content .table-wrapper {
+  overflow-x: auto;
+  margin: 1.2em 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.content .table-wrapper::-webkit-scrollbar { height: 6px; }
+.content .table-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
 .content table {
-  width: 100%; border-collapse: collapse; margin: 1.2em 0;
+  width: 100%; border-collapse: collapse;
   font-size: 14px;
 }
 .content th {
@@ -540,11 +551,15 @@ mark.search-current {
   border: 1px solid var(--border);
   font-size: 13px; color: var(--text-muted);
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 .content td {
   padding: 8px 14px;
   border: 1px solid var(--border);
   color: #c8c6d8;
+  max-width: 300px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 [data-theme="light"] .content td { color: #4a465e; }
 .content tr:nth-child(even) td { background: rgba(22,22,26,0.53); }
