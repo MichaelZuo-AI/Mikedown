@@ -1,5 +1,6 @@
 import { useAppStore } from "@/store/appStore";
 import { exportToHtml } from "@/lib/exportOps";
+import { exportToPdf } from "@/lib/exportOps";
 
 export default function Toolbar() {
   const fileName = useAppStore((s) => s.fileName);
@@ -8,10 +9,12 @@ export default function Toolbar() {
   const theme = useAppStore((s) => s.theme);
   const editMode = useAppStore((s) => s.editMode);
   const dirty = useAppStore((s) => s.dirty);
+  const keybindingMode = useAppStore((s) => s.keybindingMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleTheme = useAppStore((s) => s.toggleTheme);
   const toggleEditMode = useAppStore((s) => s.toggleEditMode);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
+  const cycleKeybindingMode = useAppStore((s) => s.cycleKeybindingMode);
   const zoom = useAppStore((s) => s.zoom);
 
   const statsText =
@@ -42,6 +45,19 @@ export default function Toolbar() {
       <button className="tb-btn" title="Export HTML" aria-label="Export HTML" onClick={exportToHtml}>
         &#x2913;
       </button>
+      <button className="tb-btn" title="Export PDF" aria-label="Export PDF" onClick={exportToPdf}>
+        PDF
+      </button>
+      {editMode && (
+        <button
+          className="tb-btn"
+          title={`Keybindings: ${keybindingMode}`}
+          aria-label={`Keybindings: ${keybindingMode}`}
+          onClick={cycleKeybindingMode}
+        >
+          {keybindingMode === "vim" ? "VIM" : keybindingMode === "emacs" ? "EMA" : "STD"}
+        </button>
+      )}
       <button className="tb-btn" title="Zoom in" aria-label="Zoom in" onClick={() => zoom(1)}>
         A+
       </button>

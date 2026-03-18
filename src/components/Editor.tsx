@@ -5,7 +5,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, type KeybindingMode } from "@/store/appStore";
 
 const lightTheme = EditorView.theme({
   "&": { backgroundColor: "#ffffff", color: "#1a1825" },
@@ -16,52 +16,81 @@ const lightTheme = EditorView.theme({
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "#d7d4e8" },
 });
 
+async function loadKeybindingExtension(mode: KeybindingMode) {
+  if (mode === "vim") {
+    const { vim } = await import("@replit/codemirror-vim");
+    return vim();
+  }
+  if (mode === "emacs") {
+    const { emacs } = await import("@replit/codemirror-emacs");
+    return emacs();
+  }
+  return [];
+}
+
 export default function Editor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const markdownContent = useAppStore((s) => s.markdownContent);
   const theme = useAppStore((s) => s.theme);
+  const keybindingMode = useAppStore((s) => s.keybindingMode);
   const setMarkdownContent = useAppStore((s) => s.setMarkdownContent);
 
-  // Create editor on mount
+  // Create editor on mount, and recreate on theme or keybinding mode change
   useEffect(() => {
     if (!containerRef.current) return;
+    let cancelled = false;
 
     const isDark = theme !== "light";
-    const state = EditorState.create({
-      doc: markdownContent,
-      extensions: [
-        lineNumbers(),
-        highlightActiveLine(),
-        drawSelection(),
-        history(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
-        markdown({ codeLanguages: languages }),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            setMarkdownContent(update.state.doc.toString());
-          }
-        }),
-        EditorView.lineWrapping,
-        isDark ? oneDark : lightTheme,
-        EditorView.theme({
-          "&": { height: "100%", fontSize: "14px" },
-          ".cm-scroller": { fontFamily: "'JetBrains Mono', monospace", lineHeight: "1.7" },
-          ".cm-content": { padding: "16px 0" },
-        }),
-      ],
+    const content = viewRef.current
+      ? viewRef.current.state.doc.toString()
+      : markdownContent;
+
+    // Destroy previous editor if any
+    viewRef.current?.destroy();
+    viewRef.current = null;
+
+    loadKeybindingExtension(keybindingMode).then((keybindingExt) => {
+      if (cancelled || !containerRef.current) return;
+
+      const state = EditorState.create({
+        doc: content,
+        extensions: [
+          keybindingExt,
+          lineNumbers(),
+          highlightActiveLine(),
+          drawSelection(),
+          history(),
+          keymap.of([...defaultKeymap, ...historyKeymap]),
+          markdown({ codeLanguages: languages }),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              setMarkdownContent(update.state.doc.toString());
+            }
+          }),
+          EditorView.lineWrapping,
+          isDark ? oneDark : lightTheme,
+          EditorView.theme({
+            "&": { height: "100%", fontSize: "14px" },
+            ".cm-scroller": { fontFamily: "'JetBrains Mono', monospace", lineHeight: "1.7" },
+            ".cm-content": { padding: "16px 0" },
+          }),
+        ],
+      });
+
+      const view = new EditorView({ state, parent: containerRef.current });
+      viewRef.current = view;
     });
 
-    const view = new EditorView({ state, parent: containerRef.current });
-    viewRef.current = view;
-
     return () => {
-      view.destroy();
+      cancelled = true;
+      viewRef.current?.destroy();
       viewRef.current = null;
     };
-    // Intentionally only run on mount and theme change — content syncs via updateListener
+    // Intentionally only run on mount, theme change, and keybinding mode change
+    // — content syncs via updateListener
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [theme]);
+  }, [theme, keybindingMode]);
 
   // Sync external content changes (e.g. file open) into editor
   useEffect(() => {

@@ -252,6 +252,63 @@ body {
   white-space: nowrap;
 }
 
+/* ── Tab bar ── */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-height: 32px;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 180px;
+  transition: all 0.15s;
+}
+
+.tab:hover { background: rgba(124,106,247,0.05); color: var(--text); }
+.tab-active { color: var(--text); background: rgba(124,106,247,0.08); }
+
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  font-size: 9px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: all 0.15s;
+}
+
+.tab-close:hover { opacity: 1; background: var(--border); }
+
+.tab-new {
+  font-size: 16px;
+  padding: 4px 10px;
+  border-right: none;
+  color: var(--text-dim);
+}
+
+.tab-new:hover { color: var(--accent); }
+
 /* ── Search bar ── */
 .search-bar {
   display: flex;
@@ -641,7 +698,7 @@ mark.search-current {
 
 /* ── Print styles ── */
 @media print {
-  .sidebar, .toolbar, .progress, .drop-zone, .editor-pane,
+  .sidebar, .toolbar, .tab-bar, .progress, .drop-zone, .editor-pane,
   .search-bar, .code-header .copy-btn, .toast { display: none !important; }
 
   #root { display: block; }

@@ -13,6 +13,7 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import DropZone from "@/components/DropZone";
 import ProgressBar from "@/components/ProgressBar";
 import Editor from "@/components/Editor";
+import TabBar from "@/components/TabBar";
 import Toast from "@/components/Toast";
 
 const ALLOWED_EXTENSIONS = ["md", "markdown", "txt"];
@@ -25,6 +26,8 @@ export default function App() {
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const loadMarkdown = useAppStore((s) => s.loadMarkdown);
   const setDragOver = useAppStore((s) => s.setDragOver);
+  const newTab = useAppStore((s) => s.newTab);
+  const closeTab = useAppStore((s) => s.closeTab);
   const rafRef = useRef(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -105,10 +108,18 @@ export default function App() {
         e.preventDefault();
         toggleSearch();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "t") {
+        e.preventDefault();
+        newTab();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "w") {
+        e.preventDefault();
+        closeTab(useAppStore.getState().activeTabId);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar, toggleEditMode, toggleSearch]);
+  }, [toggleSidebar, toggleEditMode, toggleSearch, newTab, closeTab]);
 
   // Paste handler — skip when in edit mode (CodeMirror handles paste)
   useEffect(() => {
@@ -209,6 +220,7 @@ export default function App() {
       <Sidebar />
       <div className="main">
         <Toolbar />
+        <TabBar />
         <SearchBar />
         <div className={`content-area${editMode ? " split" : ""}`}>
           {editMode && (

@@ -49,3 +49,14 @@ ${store.htmlContent}
     store.showToast("Failed to export file. Please try again.");
   }
 }
+
+/**
+ * Export the current document as PDF via the system print dialog.
+ * The user can select "Save as PDF" in the print dialog.
+ * Print styles in index.css handle hiding UI chrome and formatting.
+ */
+export function exportToPdf() {
+  const store = useAppStore.getState();
+  if (!store.htmlContent) return;
+  window.print();
+}
