@@ -8,15 +8,19 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 
 ## Features
 
+- **Multi-file tabs** — open multiple documents (`Cmd+T` new, `Cmd+W` close)
 - **Split-pane editor** with live preview (CodeMirror 6)
+- **Vim/Emacs keybindings** — cycle modes via toolbar button
 - **Document search** (`Cmd+F`) with match highlighting and navigation
 - **KaTeX math rendering** — inline `$...$` and display `$$...$$`
 - **Mermaid diagrams** — render flowcharts, sequence diagrams, and more
 - **Export to HTML** — standalone file with embedded styles
+- **Export to PDF** — via system print dialog
 - **Recent files** — quick access from the sidebar
 - **Auto-save drafts** — never lose unsaved work
 - Dark/light theme with beautiful typography (Lora, DM Sans, JetBrains Mono)
 - Syntax-highlighted code blocks with one-click copy
+- Responsive tables with horizontal scroll for wide content
 - Auto-generated table of contents with scroll-spy
 - Reading progress bar and word count
 - Live reload — automatically updates when the file changes on disk
@@ -24,7 +28,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - macOS file association — set as default app for `.md` files
 - macOS-native overlay titlebar
 - Print-ready output (`Cmd+P`)
-- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+F` search, `Cmd+\` toggle sidebar, `A+/A-` zoom
+- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+F` search, `Cmd+T` new tab, `Cmd+W` close tab, `Cmd+\` toggle sidebar, `A+/A-` zoom
 
 ## Install
 
@@ -79,6 +83,15 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.7.0
+
+- Multi-file tabs (`Cmd+T` new, `Cmd+W` close) with auto-hiding tab bar
+- Vim/Emacs keybinding modes for the editor
+- PDF export via system print dialog
+- Tree-shaken highlight.js (~40% smaller main bundle)
+- Responsive table layout — wide tables scroll horizontally
+- CI: frontend tests, Rust tests, cross-platform builds (macOS/Windows/Linux)
 
 ### v0.6.0
 
