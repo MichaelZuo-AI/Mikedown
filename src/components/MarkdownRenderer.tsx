@@ -44,13 +44,22 @@ function isLocalPath(src: string): boolean {
   return true;
 }
 
+function normalizePath(p: string): string {
+  const parts = p.split("/");
+  const out: string[] = [];
+  for (const seg of parts) {
+    if (seg === "..") out.pop();
+    else if (seg !== "." && seg !== "") out.push(seg);
+  }
+  return "/" + out.join("/");
+}
+
 function resolveImageSrc(src: string, fileDir: string): string {
   if (src.startsWith("/")) {
-    // Absolute path — convert directly
     return convertFileSrc(src);
   }
-  // Relative path — resolve against file directory
-  const resolved = `${fileDir}/${src}`;
+  // Relative path — resolve against file directory and normalize ../
+  const resolved = normalizePath(`${fileDir}/${src}`);
   return convertFileSrc(resolved);
 }
 
