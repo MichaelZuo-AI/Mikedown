@@ -613,12 +613,29 @@ mark.search-current {
 .content pre .hljs { padding: 16px; display: block; font-size: 13px; line-height: 1.65; }
 
 .content img {
-  max-width: 100%; border-radius: var(--radius);
+  max-width: 100%; height: auto;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   margin: 0.8em 0;
+  display: block;
 }
 
 .content input[type="checkbox"] { margin-right: 6px; }
+
+/* ── Strikethrough, sub/sup, details, abbreviations ── */
+.content del, .content s { text-decoration: line-through; color: var(--text-dim); }
+.content sub { font-size: 0.8em; }
+.content sup { font-size: 0.8em; }
+.content mark { background: rgba(255,213,79,0.35); padding: 1px 4px; border-radius: 3px; }
+.content abbr[title] { text-decoration: underline dotted; cursor: help; }
+.content details { margin: 0.8em 0; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.content details summary { cursor: pointer; font-weight: 600; }
+.content details[open] summary { margin-bottom: 0.5em; }
+.content dl { margin: 0.8em 0; }
+.content dt { font-weight: 600; margin-top: 0.6em; }
+.content dd { margin-left: 1.5em; color: var(--text-dim); }
+.content figure { margin: 1.2em 0; }
+.content figcaption { font-size: 0.9em; color: var(--text-dim); text-align: center; margin-top: 0.4em; }
 
 /* ── Mermaid diagrams ── */
 .content .mermaid {

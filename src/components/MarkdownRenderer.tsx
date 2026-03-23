@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useAppStore } from "@/store/appStore";
 
 async function renderMermaidNodes(el: HTMLElement) {
@@ -34,8 +35,40 @@ async function renderMermaidNodes(el: HTMLElement) {
   }
 }
 
+function isLocalPath(src: string): boolean {
+  if (!src) return false;
+  // Skip URLs, data URIs, and blob URIs
+  if (/^(https?:|data:|blob:|asset:)/i.test(src)) return false;
+  // Skip already-converted asset localhost URLs
+  if (src.includes("asset.localhost")) return false;
+  return true;
+}
+
+function resolveImageSrc(src: string, fileDir: string): string {
+  if (src.startsWith("/")) {
+    // Absolute path — convert directly
+    return convertFileSrc(src);
+  }
+  // Relative path — resolve against file directory
+  const resolved = `${fileDir}/${src}`;
+  return convertFileSrc(resolved);
+}
+
+function resolveLocalImages(el: HTMLElement, filePath: string) {
+  if (!filePath) return;
+  const fileDir = filePath.replace(/[/\\][^/\\]*$/, "");
+  const imgs = el.querySelectorAll<HTMLImageElement>("img");
+  for (const img of Array.from(imgs)) {
+    const src = img.getAttribute("src");
+    if (src && isLocalPath(src)) {
+      img.src = resolveImageSrc(src, fileDir);
+    }
+  }
+}
+
 export default function MarkdownRenderer() {
   const htmlContent = useAppStore((s) => s.htmlContent);
+  const filePath = useAppStore((s) => s.filePath);
   const fontSize = useAppStore((s) => s.fontSize);
   const contentRef = useRef<HTMLDivElement>(null);
   const pendingRender = useRef<number | null>(null);
@@ -53,6 +86,14 @@ export default function MarkdownRenderer() {
   useEffect(() => {
     scheduleRender();
   }, [htmlContent, scheduleRender]);
+
+  // Resolve local image paths to Tauri asset protocol URLs
+  useEffect(() => {
+    const el = contentRef.current;
+    if (el && filePath) {
+      resolveLocalImages(el, filePath);
+    }
+  }, [htmlContent, filePath]);
 
   // Re-render mermaid diagrams on theme change
   useEffect(() => {

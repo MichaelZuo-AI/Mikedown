@@ -296,6 +296,48 @@ describe("MarkdownRenderer", () => {
     expect(container.querySelector("p")?.textContent).toBe("World");
   });
 
+  it("resolves relative image paths to Tauri asset URLs when filePath is set", () => {
+    useAppStore.setState({
+      htmlContent: '<img src="photo.png" alt="test">',
+      filePath: "/Users/me/docs/readme.md",
+    });
+    const { container } = render(<MarkdownRenderer />);
+    const img = container.querySelector("img") as HTMLImageElement;
+    expect(img.src).toContain("asset.localhost");
+    expect(img.src).toContain("/Users/me/docs/photo.png");
+  });
+
+  it("resolves absolute image paths to Tauri asset URLs", () => {
+    useAppStore.setState({
+      htmlContent: '<img src="/tmp/image.jpg" alt="abs">',
+      filePath: "/Users/me/docs/readme.md",
+    });
+    const { container } = render(<MarkdownRenderer />);
+    const img = container.querySelector("img") as HTMLImageElement;
+    expect(img.src).toContain("asset.localhost");
+    expect(img.src).toContain("/tmp/image.jpg");
+  });
+
+  it("does not modify http/https image URLs", () => {
+    useAppStore.setState({
+      htmlContent: '<img src="https://example.com/img.png" alt="remote">',
+      filePath: "/Users/me/docs/readme.md",
+    });
+    const { container } = render(<MarkdownRenderer />);
+    const img = container.querySelector("img") as HTMLImageElement;
+    expect(img.src).toBe("https://example.com/img.png");
+  });
+
+  it("does not resolve images when filePath is empty", () => {
+    useAppStore.setState({
+      htmlContent: '<img src="photo.png" alt="test">',
+      filePath: "",
+    });
+    const { container } = render(<MarkdownRenderer />);
+    const img = container.querySelector("img") as HTMLImageElement;
+    expect(img.src).not.toContain("asset.localhost");
+  });
+
   it("renders empty content when htmlContent is empty string", () => {
     useAppStore.setState({ htmlContent: "" });
     const { container } = render(<MarkdownRenderer />);

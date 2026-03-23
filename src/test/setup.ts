@@ -54,6 +54,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(() => Promise.resolve([])),
+  convertFileSrc: vi.fn((path: string) => `http://asset.localhost/${path}`),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
