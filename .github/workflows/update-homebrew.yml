@@ -1,0 +1,79 @@
+name: Update Homebrew Cask
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download DMG and compute SHA256
+        id: sha
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://github.com/MichaelZuo-AI/Mikedown/releases/download/v${VERSION}/MikeDown_${VERSION}_aarch64.dmg"
+          echo "Downloading ${URL}..."
+          curl -fSL -o mikedown.dmg "${URL}"
+          SHA=$(shasum -a 256 mikedown.dmg | cut -d ' ' -f 1)
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "SHA256: ${SHA}"
+
+      - name: Update cask in homebrew-tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+
+          cat > mikedown.rb << 'CASK'
+          cask "mikedown" do
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA_PLACEHOLDER"
+
+            url "https://github.com/MichaelZuo-AI/Mikedown/releases/download/v#{version}/MikeDown_#{version}_aarch64.dmg"
+            name "MikeDown"
+            desc "Fast, lightweight desktop Markdown editor and viewer built with Tauri"
+            homepage "https://github.com/MichaelZuo-AI/Mikedown"
+
+            depends_on arch: :arm64
+
+            app "MikeDown.app"
+
+            postflight do
+              system_command "/usr/bin/xattr", args: ["-cr", "#{appdir}/MikeDown.app"]
+            end
+
+            zap trash: [
+              "~/Library/Application Support/com.aidreamworks.mikedown",
+              "~/Library/Caches/com.aidreamworks.mikedown",
+              "~/Library/WebKit/com.aidreamworks.mikedown",
+            ]
+          end
+          CASK
+
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" mikedown.rb
+          sed -i "s/SHA_PLACEHOLDER/${SHA}/g" mikedown.rb
+
+          # Base64 encode the file content for the GitHub API
+          CONTENT=$(base64 -w 0 mikedown.rb)
+
+          # Get current file SHA for update
+          FILE_SHA=$(curl -s -H "Authorization: token ${GH_TOKEN}" \
+            "https://api.github.com/repos/MichaelZuo-AI/homebrew-tap/contents/Casks/mikedown.rb" \
+            | jq -r '.sha')
+
+          # Update the file via GitHub API
+          curl -X PUT \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/MichaelZuo-AI/homebrew-tap/contents/Casks/mikedown.rb" \
+            -d "{
+              \"message\": \"Update MikeDown to v${VERSION}\",
+              \"content\": \"${CONTENT}\",
+              \"sha\": \"${FILE_SHA}\"
+            }"
