@@ -1,13 +1,14 @@
 name: Release
 
+permissions:
+  contents: write
+
 on:
   push:
     tags: ['v*']
 
 jobs:
   release:
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
