@@ -2,6 +2,7 @@ import { Marked } from "marked";
 import hljs from "highlight.js/lib/core";
 import DOMPurify from "dompurify";
 import katex from "katex";
+import markedFootnote from "marked-footnote";
 
 // Register commonly used languages eagerly for fast first-render
 import javascript from "highlight.js/lib/languages/javascript";
@@ -103,6 +104,7 @@ const renderer = {
 };
 
 marked.use({ renderer, breaks: true, gfm: true });
+marked.use(markedFootnote());
 
 function renderMath(content: string): string {
   // Protect code blocks and inline code from math processing
@@ -148,7 +150,8 @@ export function parseMarkdown(content: string): string {
   const processed = renderMath(content);
   const raw = marked.parse(processed) as string;
   const sanitized = DOMPurify.sanitize(raw, {
-    ADD_ATTR: ["data-copy"],
+    ADD_ATTR: ["data-copy", "data-footnote-ref", "data-footnote-backref", "aria-describedby", "aria-label"],
+    ADD_DATA_URI_TAGS: ["img"],
     ADD_TAGS: ["math", "semantics", "mrow", "mi", "mo", "mn", "msup", "msub", "mfrac", "msqrt", "mroot", "mover", "munder", "mtable", "mtr", "mtd", "mspace", "mtext", "annotation"],
   });
   // Wrap <table> elements in a scrollable container for wide tables

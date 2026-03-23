@@ -16,9 +16,10 @@ export default function Toc() {
   useEffect(() => {
     // Small delay to ensure content is rendered
     const timer = setTimeout(() => {
-      const headings = document.querySelectorAll(
+      const allHeadings = document.querySelectorAll(
         ".content h1, .content h2, .content h3, .content h4",
       );
+      const headings = Array.from(allHeadings).slice(0, 500);
       const items: TocEntry[] = [];
       headings.forEach((h) => {
         items.push({
@@ -41,9 +42,10 @@ export default function Toc() {
     const onScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        const headings = document.querySelectorAll(
+        const allH = document.querySelectorAll(
           ".content h1, .content h2, .content h3, .content h4",
         );
+        const headings = Array.from(allH).slice(0, 500);
         let active: Element | null = null;
         headings.forEach((h) => {
           if (h instanceof HTMLElement && h.offsetTop - wrap.scrollTop <= 80) {

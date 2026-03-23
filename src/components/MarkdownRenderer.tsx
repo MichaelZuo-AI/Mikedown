@@ -62,6 +62,12 @@ function resolveLocalImages(el: HTMLElement, filePath: string) {
     const src = img.getAttribute("src");
     if (src && isLocalPath(src)) {
       img.src = resolveImageSrc(src, fileDir);
+      img.onerror = () => {
+        const placeholder = document.createElement("div");
+        placeholder.className = "img-error";
+        placeholder.textContent = `Image not found: ${src}`;
+        img.replaceWith(placeholder);
+      };
     }
   }
 }

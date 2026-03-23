@@ -105,6 +105,7 @@ function loadRecentFiles(): RecentFile[] {
 }
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+let parseTimer: ReturnType<typeof setTimeout> | undefined;
 
 let nextTabId = 1;
 function genTabId(): string {
@@ -272,21 +273,30 @@ export const useAppStore = create<AppState>((set) => ({
   toggleEditMode: () => set((s) => ({ editMode: !s.editMode })),
 
   setMarkdownContent: (content) => {
-    const html = parseMarkdown(content);
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const readMin = Math.ceil(words / 200);
+
+    // Immediate: update raw content and stats (keeps editor responsive)
     set((s) => {
       const tabs = updateActiveTab(s, {
         markdownContent: content,
-        htmlContent: html,
         wordCount: words,
         readingTime: readMin,
         dirty: true,
       });
-      return {
-        ...deriveFromActiveTab(tabs, s.activeTabId),
-      };
+      return deriveFromActiveTab(tabs, s.activeTabId);
     });
+
+    // Debounced: re-parse markdown (expensive for large files)
+    clearTimeout(parseTimer);
+    parseTimer = setTimeout(() => {
+      const html = parseMarkdown(content);
+      set((s) => {
+        const tabs = updateActiveTab(s, { htmlContent: html });
+        return deriveFromActiveTab(tabs, s.activeTabId);
+      });
+    }, 150);
+
     // Debounced auto-save to localStorage
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {

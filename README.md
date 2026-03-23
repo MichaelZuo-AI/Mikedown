@@ -32,12 +32,9 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 
 ## Install
 
-### Homebrew (recommended)
+### Homebrew (coming soon)
 
-```bash
-brew tap MichaelZuo-AI/tap
-brew install --cask mikedown
-```
+Homebrew cask will be available after the first GitHub Release is published.
 
 ### Manual Download
 

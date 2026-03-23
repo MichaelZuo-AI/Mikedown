@@ -430,3 +430,48 @@ describe("parseMarkdown — raw HTML passthrough (marked v9 default)", () => {
     expect(html).toContain("&lt;b&gt;");
   });
 });
+
+// ---- data URI images --------------------------------------------------------
+
+describe("parseMarkdown — data URI images", () => {
+  it("preserves data: URI images", () => {
+    const html = parseMarkdown('![img](data:image/png;base64,abc123)');
+    expect(html).toContain('src="data:image/png;base64,abc123"');
+  });
+});
+
+// ---- footnotes --------------------------------------------------------------
+
+describe("parseMarkdown — footnotes", () => {
+  it("renders footnote reference and definition", () => {
+    const md = "Text with a footnote[^1].\n\n[^1]: Footnote content here.";
+    const html = parseMarkdown(md);
+    expect(html).toContain("Footnote content here");
+    // Should have a footnote section
+    expect(html).toContain("footnote");
+  });
+
+  it("renders multiple footnotes", () => {
+    const md = "First[^1] and second[^2].\n\n[^1]: Note one.\n[^2]: Note two.";
+    const html = parseMarkdown(md);
+    expect(html).toContain("Note one");
+    expect(html).toContain("Note two");
+  });
+});
+
+// ---- strikethrough ----------------------------------------------------------
+
+describe("parseMarkdown — strikethrough", () => {
+  it("renders ~~text~~ as <del> tag", () => {
+    const html = parseMarkdown("~~deleted~~");
+    expect(html).toContain("<del>");
+    expect(html).toContain("deleted");
+    expect(html).toContain("</del>");
+  });
+
+  it("renders strikethrough inline with other text", () => {
+    const html = parseMarkdown("keep ~~remove~~ keep");
+    expect(html).toContain("keep");
+    expect(html).toContain("<del>remove</del>");
+  });
+});

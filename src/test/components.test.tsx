@@ -392,6 +392,20 @@ describe("MarkdownRenderer", () => {
     expect(clipboardWriteText).toHaveBeenCalledWith("const x = 1;");
   });
 
+  it("replaces broken images with error placeholder when filePath is set", () => {
+    useAppStore.setState({
+      htmlContent: '<img src="missing.png" alt="test">',
+      filePath: "/Users/me/docs/readme.md",
+    });
+    const { container } = render(<MarkdownRenderer />);
+    const img = container.querySelector("img") as HTMLImageElement;
+    // Simulate error event
+    fireEvent.error(img);
+    const placeholder = container.querySelector(".img-error");
+    expect(placeholder).toBeInTheDocument();
+    expect(placeholder?.textContent).toContain("Image not found: missing.png");
+  });
+
   it("renders the Copy button text initially", () => {
     const html = `
       <pre>

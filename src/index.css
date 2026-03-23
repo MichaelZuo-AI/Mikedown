@@ -620,6 +620,16 @@ mark.search-current {
   display: block;
 }
 
+.content .img-error {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 0.85em;
+  margin: 0.8em 0;
+}
+
 .content input[type="checkbox"] { margin-right: 6px; }
 
 /* ── Strikethrough, sub/sup, details, abbreviations ── */
@@ -636,6 +646,13 @@ mark.search-current {
 .content dd { margin-left: 1.5em; color: var(--text-dim); }
 .content figure { margin: 1.2em 0; }
 .content figcaption { font-size: 0.9em; color: var(--text-dim); text-align: center; margin-top: 0.4em; }
+
+/* -- Footnotes -- */
+.content .footnotes { margin-top: 2em; padding-top: 1em; border-top: 1px solid var(--border); font-size: 0.9em; }
+.content .footnotes ol { padding-left: 1.5em; }
+.content .footnotes li { margin: 0.4em 0; color: var(--text-dim); }
+.content sup a[data-footnote-ref] { color: var(--accent); text-decoration: none; font-weight: 600; }
+.content a[data-footnote-backref] { color: var(--accent); text-decoration: none; margin-left: 4px; }
 
 /* ── Mermaid diagrams ── */
 .content .mermaid {
