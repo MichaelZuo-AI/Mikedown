@@ -8,7 +8,7 @@ Tauri v2 + React 18 + TypeScript desktop Markdown editor and viewer.
 pnpm install              # install dependencies
 pnpm dev                  # vite dev server (frontend only, port 1420)
 pnpm build                # typecheck + vite build
-pnpm test                 # run 287 tests (vitest)
+pnpm test                 # run 297 tests (vitest)
 pnpm tauri dev            # full Tauri dev (frontend + Rust backend)
 pnpm tauri build          # production build
 ```

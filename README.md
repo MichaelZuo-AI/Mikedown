@@ -23,6 +23,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - Responsive tables with horizontal scroll for wide content
 - Auto-generated table of contents with scroll-spy
 - Reading progress bar and word count
+- **Local images** — relative and absolute image paths rendered via Tauri asset protocol
 - Live reload — automatically updates when the file changes on disk
 - Drag-and-drop or paste markdown files
 - macOS file association — set as default app for `.md` files
@@ -83,6 +84,21 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.9.1
+
+- Fix file watcher on macOS — external edits now reliably detected (watch parent directory instead of file inode)
+
+### v0.9.0
+
+- Fix local image rendering — enable Tauri asset protocol so relative/absolute image paths load correctly
+- Normalize `../` segments in relative image paths
+
+### v0.8.0
+
+- Homebrew cask distribution (`brew install --cask mikedown`)
+- CI: auto-update Homebrew tap on release publish
+- CI: macOS Apple Silicon only (dropped Windows/Linux builds)
 
 ### v0.7.0
 
