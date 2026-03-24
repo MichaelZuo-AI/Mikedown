@@ -157,29 +157,48 @@ export default function App() {
     };
   }, []);
 
-  // Watch current file for changes (only when NOT in edit mode to avoid overwriting edits)
+  // Watch current file for external changes.
+  // We watch the *parent directory* instead of the file itself because on macOS
+  // the kqueue backend loses track of the file when editors do atomic saves
+  // (write-to-temp + rename), which replaces the inode the watcher was tracking.
   const filePath = useAppStore((s) => s.filePath);
   useEffect(() => {
     if (!filePath || editMode) return;
 
+    const dir = filePath.replace(/[/\\][^/\\]*$/, "");
+    const basename = filePath.split(/[/\\]/).pop() || "";
+    if (!dir || !basename) return;
+
     let cancelled = false;
     let stopWatching: (() => void) | undefined;
     let debounceTimer: ReturnType<typeof setTimeout>;
+    let lastContent: string | undefined;
 
-    watch(filePath, () => {
+    watch(dir, (event: unknown) => {
+      // Filter: only react when our specific file is affected
+      const paths: string[] = ((event as Record<string, unknown>)?.paths as string[]) ?? [];
+      const relevant = paths.length === 0 || paths.some((p) => {
+        const name = (typeof p === "string" ? p : "").split(/[/\\]/).pop();
+        return name === basename;
+      });
+      if (!relevant) return;
+
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(async () => {
         if (cancelled) return;
         try {
           const content = await readTextFile(filePath);
+          // Skip if content hasn't actually changed (avoids render loops)
+          if (content === lastContent) return;
+          lastContent = content;
           const store = useAppStore.getState();
-          if (store.filePath === filePath) {
+          if (store.filePath === filePath && store.markdownContent !== content) {
             store.loadMarkdown(content, store.fileName, filePath);
           }
         } catch {
           // File may be mid-write; ignore
         }
-      }, 200);
+      }, 300);
     }, { recursive: false }).then((unwatch) => {
       if (cancelled) {
         unwatch();
