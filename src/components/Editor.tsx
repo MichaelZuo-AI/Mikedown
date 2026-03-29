@@ -7,6 +7,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { useAppStore, type KeybindingMode } from "@/store/appStore";
 import { clipboardToMarkdownTable } from "@/lib/tableConverter";
+import { urlClickPlugin, urlHoverTooltip } from "@/lib/urlClickPlugin";
 
 const lightTheme = EditorView.theme({
   "&": { backgroundColor: "#ffffff", color: "#1a1825" },
@@ -82,6 +83,8 @@ export default function Editor() {
               return true;
             },
           }),
+          urlClickPlugin,
+          urlHoverTooltip,
           EditorView.lineWrapping,
           isDark ? oneDark : lightTheme,
           EditorView.theme({
