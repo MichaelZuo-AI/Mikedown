@@ -145,6 +145,36 @@ function renderMath(content: string): string {
   return processed;
 }
 
+const CALLOUT_TYPES: Record<string, { icon: string; color: string }> = {
+  note:     { icon: "📝", color: "blue" },
+  abstract: { icon: "📄", color: "blue" },
+  info:     { icon: "ℹ️", color: "blue" },
+  tip:      { icon: "💡", color: "green" },
+  hint:     { icon: "💡", color: "green" },
+  success:  { icon: "✅", color: "green" },
+  question: { icon: "❓", color: "yellow" },
+  warning:  { icon: "⚠️", color: "yellow" },
+  caution:  { icon: "⚠️", color: "yellow" },
+  danger:   { icon: "🔴", color: "red" },
+  failure:  { icon: "❌", color: "red" },
+  bug:      { icon: "🐛", color: "red" },
+  example:  { icon: "📋", color: "purple" },
+  quote:    { icon: "💬", color: "gray" },
+  important:{ icon: "❗", color: "purple" },
+};
+
+function renderCallouts(html: string): string {
+  return html.replace(
+    /<blockquote>\s*<p>\[!(\w+)\]\s*(.*?)<\/p>([\s\S]*?)<\/blockquote>/gi,
+    (_match, type: string, titleText: string, body: string) => {
+      const key = type.toLowerCase();
+      const config = CALLOUT_TYPES[key] || { icon: "📝", color: "gray" };
+      const label = titleText.trim() || key.charAt(0).toUpperCase() + key.slice(1);
+      return `<div class="callout callout-${config.color}"><div class="callout-title">${config.icon} ${escapeHtml(label)}</div>${body.trim() ? `<div class="callout-body">${body}</div>` : ""}</div>`;
+    },
+  );
+}
+
 export function parseMarkdown(content: string): string {
   idCounts = new Map();
   const processed = renderMath(content);
@@ -155,5 +185,6 @@ export function parseMarkdown(content: string): string {
     ADD_TAGS: ["math", "semantics", "mrow", "mi", "mo", "mn", "msup", "msub", "mfrac", "msqrt", "mroot", "mover", "munder", "mtable", "mtr", "mtd", "mspace", "mtext", "annotation"],
   });
   // Wrap <table> elements in a scrollable container for wide tables
-  return sanitized.replace(/<table>/g, '<div class="table-wrapper"><table>').replace(/<\/table>/g, '</table></div>');
+  const withTables = sanitized.replace(/<table>/g, '<div class="table-wrapper"><table>').replace(/<\/table>/g, '</table></div>');
+  return renderCallouts(withTables);
 }
