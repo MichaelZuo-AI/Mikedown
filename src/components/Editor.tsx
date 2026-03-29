@@ -6,6 +6,7 @@ import { languages } from "@codemirror/language-data";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { useAppStore, type KeybindingMode } from "@/store/appStore";
+import { clipboardToMarkdownTable } from "@/lib/tableConverter";
 
 const lightTheme = EditorView.theme({
   "&": { backgroundColor: "#ffffff", color: "#1a1825" },
@@ -67,6 +68,19 @@ export default function Editor() {
             if (update.docChanged) {
               setMarkdownContent(update.state.doc.toString());
             }
+          }),
+          EditorView.domEventHandlers({
+            paste(event, view) {
+              const clipboardData = event.clipboardData;
+              if (!clipboardData) return false;
+              const mdTable = clipboardToMarkdownTable(clipboardData);
+              if (!mdTable) return false;
+              // Replace selection (or insert at cursor) with the converted table
+              const { from, to } = view.state.selection.main;
+              view.dispatch({ changes: { from, to, insert: mdTable } });
+              event.preventDefault();
+              return true;
+            },
           }),
           EditorView.lineWrapping,
           isDark ? oneDark : lightTheme,
