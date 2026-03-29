@@ -138,6 +138,34 @@ export default function MarkdownRenderer() {
         target.textContent = "Failed";
         setTimeout(() => { target.textContent = "Copy"; }, 2000);
       });
+      return;
+    }
+
+    // Interactive checkbox toggle
+    if (target instanceof HTMLInputElement && target.type === "checkbox") {
+      e.preventDefault();
+      const el = contentRef.current;
+      if (!el) return;
+      // Find which checkbox index this is in the rendered HTML
+      const allCheckboxes = Array.from(el.querySelectorAll('input[type="checkbox"]'));
+      const cbIndex = allCheckboxes.indexOf(target);
+      if (cbIndex === -1) return;
+
+      const store = useAppStore.getState();
+      const md = store.markdownContent;
+      const pattern = /^(\s*[-*+]\s+)\[([ xX])\]/gm;
+      let matchIndex = 0;
+      let result: RegExpExecArray | null;
+      while ((result = pattern.exec(md)) !== null) {
+        if (matchIndex === cbIndex) {
+          const isChecked = result[2] !== " ";
+          const replacement = isChecked ? `${result[1]}[ ]` : `${result[1]}[x]`;
+          const newMd = md.slice(0, result.index) + replacement + md.slice(result.index + result[0].length);
+          store.setMarkdownContent(newMd);
+          break;
+        }
+        matchIndex++;
+      }
     }
   }, []);
 
