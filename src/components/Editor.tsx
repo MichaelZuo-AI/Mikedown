@@ -29,6 +29,26 @@ async function loadKeybindingExtension(mode: KeybindingMode) {
   return [];
 }
 
+function scrollSyncPlugin() {
+  let rafId = 0;
+  return EditorView.domEventHandlers({
+    scroll(_event, view) {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const scroller = view.scrollDOM;
+        const preview = document.querySelector(".content-wrap") as HTMLElement | null;
+        if (!scroller || !preview) return;
+        const editorScrollable = scroller.scrollHeight - scroller.clientHeight;
+        if (editorScrollable <= 0) return;
+        const pct = scroller.scrollTop / editorScrollable;
+        const previewScrollable = preview.scrollHeight - preview.clientHeight;
+        preview.scrollTop = pct * previewScrollable;
+      });
+      return false; // don't prevent default
+    },
+  });
+}
+
 export default function Editor() {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -82,6 +102,7 @@ export default function Editor() {
               return true;
             },
           }),
+          scrollSyncPlugin(),
           EditorView.lineWrapping,
           isDark ? oneDark : lightTheme,
           EditorView.theme({
