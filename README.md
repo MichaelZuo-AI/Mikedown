@@ -85,6 +85,17 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 
 ## Changelog
 
+### v0.10.0
+
+- Table paste conversion — paste HTML tables or TSV/CSV data, auto-converts to Markdown tables in editor
+- Interactive checkboxes — click task list checkboxes in preview to toggle `[x]`/`[ ]` in source
+- Auto-save to file — dirty files with known paths auto-saved to disk after 3s of inactivity
+- Session tab persistence — all open tabs restored across app restarts
+- GitHub-style callout blocks — `> [!NOTE]`, `> [!WARNING]`, `> [!TIP]` etc. rendered with colored styling
+- Clickable URLs in editor — Cmd/Ctrl+Click to open links, with underline decoration and hover tooltip
+- Synchronized editor-preview scrolling — editor and preview scroll together in split mode
+- Image paste from clipboard — paste images in editor, saved to `assets/` folder with markdown link inserted
+
 ### v0.9.1
 
 - Fix file watcher on macOS — external edits now reliably detected (watch parent directory instead of file inode)
