@@ -94,9 +94,43 @@ export default function Editor() {
             paste(event, view) {
               const clipboardData = event.clipboardData;
               if (!clipboardData) return false;
+
+              // Image paste: save image file alongside the document
+              const items = clipboardData.items;
+              for (const item of Array.from(items)) {
+                if (item.type.startsWith("image/")) {
+                  const blob = item.getAsFile();
+                  const filePath = useAppStore.getState().filePath;
+                  if (!blob || !filePath) break; // need a saved file path
+                  event.preventDefault();
+                  const ext = item.type === "image/jpeg" ? "jpg" : "png";
+                  const filename = `img-${Date.now()}.${ext}`;
+                  const dir = filePath.replace(/[/\\][^/\\]*$/, "");
+                  const assetsDir = `${dir}/assets`;
+                  const imgPath = `${assetsDir}/${filename}`;
+                  blob.arrayBuffer().then(async (buffer) => {
+                    try {
+                      const { exists, mkdir } = await import("@tauri-apps/plugin-fs");
+                      const { writeFile } = await import("@tauri-apps/plugin-fs");
+                      if (!(await exists(assetsDir))) await mkdir(assetsDir);
+                      await writeFile(imgPath, new Uint8Array(buffer));
+                      const pos = view.state.selection.main.head;
+                      const mdLink = `![](assets/${filename})`;
+                      view.dispatch({
+                        changes: { from: pos, to: pos, insert: mdLink },
+                        selection: { anchor: pos + mdLink.length },
+                      });
+                    } catch (e) {
+                      console.error("Image paste failed:", e);
+                    }
+                  });
+                  return true;
+                }
+              }
+
+              // Table paste: convert HTML/TSV/CSV to markdown table
               const mdTable = clipboardToMarkdownTable(clipboardData);
               if (!mdTable) return false;
-              // Replace selection (or insert at cursor) with the converted table
               const { from, to } = view.state.selection.main;
               view.dispatch({ changes: { from, to, insert: mdTable } });
               event.preventDefault();
