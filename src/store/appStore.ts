@@ -105,6 +105,7 @@ function loadRecentFiles(): RecentFile[] {
 }
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+let autoSaveFileTimer: ReturnType<typeof setTimeout> | undefined;
 let parseTimer: ReturnType<typeof setTimeout> | undefined;
 
 let nextTabId = 1;
@@ -308,6 +309,27 @@ export const useAppStore = create<AppState>((set) => ({
         timestamp: Date.now(),
       }));
     }, 1000);
+
+    // Debounced auto-save to file (3s inactivity, only for files with a path)
+    clearTimeout(autoSaveFileTimer);
+    autoSaveFileTimer = setTimeout(async () => {
+      const s = useAppStore.getState();
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      if (!tab?.filePath || !tab.dirty) return;
+      try {
+        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+        await writeTextFile(tab.filePath, tab.markdownContent);
+        set((prev) => {
+          const tabs = prev.tabs.map((t) =>
+            t.id === tab.id ? { ...t, dirty: false } : t,
+          );
+          return { ...deriveFromActiveTab(tabs, prev.activeTabId) };
+        });
+        safeRemoveItem("mikedown-draft");
+      } catch {
+        // Auto-save failure is non-fatal — user can still save manually
+      }
+    }, 3000);
   },
 
   markClean: () => {
