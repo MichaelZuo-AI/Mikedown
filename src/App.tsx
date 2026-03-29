@@ -40,11 +40,14 @@ export default function App() {
     );
   }, [theme]);
 
-  // Restore draft on mount (only if no file was opened via CLI/association)
+  // Restore session or draft on mount (only if no file was opened via CLI/association)
   useEffect(() => {
     const store = useAppStore.getState();
     if (!store.filePath && !store.markdownContent) {
-      store.restoreDraft();
+      store.restoreSession().catch(() => {
+        // Session restore failed (e.g. not in Tauri) — fall back to draft
+        store.restoreDraft();
+      });
     }
   }, []);
 
