@@ -82,6 +82,9 @@ interface AppState {
   newTab: () => void;
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
+
+  // Session persistence
+  restoreSession: () => Promise<void>;
 }
 
 function safeGetItem(key: string): string | null {
@@ -106,6 +109,22 @@ function loadRecentFiles(): RecentFile[] {
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let parseTimer: ReturnType<typeof setTimeout> | undefined;
+
+interface SessionData {
+  filePaths: string[];
+  activeIndex: number;
+}
+
+function persistSession(tabs: Tab[], activeTabId: string): void {
+  const filePaths = tabs.map((t) => t.filePath).filter(Boolean);
+  if (filePaths.length === 0) {
+    safeRemoveItem("mikedown-session");
+    return;
+  }
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activeIndex = activeTab?.filePath ? filePaths.indexOf(activeTab.filePath) : 0;
+  safeSetItem("mikedown-session", JSON.stringify({ filePaths, activeIndex: Math.max(0, activeIndex) }));
+}
 
 let nextTabId = 1;
 function genTabId(): string {
@@ -258,6 +277,10 @@ export const useAppStore = create<AppState>((set) => ({
         ...(recentFiles ? { recentFiles } : {}),
       };
     });
+
+    // Persist session after loading
+    const st = useAppStore.getState();
+    persistSession(st.tabs, st.activeTabId);
   },
 
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
@@ -398,6 +421,7 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => {
       const tab = createEmptyTab();
       const tabs = [...s.tabs, tab];
+      persistSession(tabs, tab.id);
       return {
         ...deriveFromActiveTab(tabs, tab.id),
         activeTabId: tab.id,
@@ -408,9 +432,9 @@ export const useAppStore = create<AppState>((set) => ({
   closeTab: (id) =>
     set((s) => {
       if (s.tabs.length <= 1) {
-        // Last tab — reset to empty instead of removing
         const tab = createEmptyTab();
         const newTabs = [tab];
+        persistSession(newTabs, tab.id);
         return {
           activeTabId: tab.id,
           ...deriveFromActiveTab(newTabs, tab.id),
@@ -423,6 +447,7 @@ export const useAppStore = create<AppState>((set) => ({
         s.activeTabId === id
           ? tabs[Math.min(idx, tabs.length - 1)].id
           : s.activeTabId;
+      persistSession(tabs, newActiveId);
       return {
         ...deriveFromActiveTab(tabs, newActiveId),
         activeTabId: newActiveId,
@@ -434,10 +459,41 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => {
       const tab = s.tabs.find((t) => t.id === id);
       if (!tab) return {};
+      persistSession(s.tabs, id);
       return {
         activeTabId: id,
         ...deriveFromActiveTab(s.tabs, id),
         isDropZoneVisible: !tab.markdownContent,
       };
     }),
+
+  restoreSession: async () => {
+    const raw = safeGetItem("mikedown-session");
+    if (!raw) return;
+    try {
+      const { filePaths, activeIndex } = JSON.parse(raw) as SessionData;
+      if (!Array.isArray(filePaths) || filePaths.length === 0) return;
+
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      for (let i = 0; i < filePaths.length; i++) {
+        try {
+          const path = filePaths[i];
+          const content = await readTextFile(path);
+          const name = path.split(/[/\\]/).pop() || "Untitled";
+          useAppStore.getState().loadMarkdown(content, name, path);
+        } catch {
+          // File may have been deleted — skip silently
+        }
+      }
+
+      // Activate the previously active tab
+      const store = useAppStore.getState();
+      const tabsWithPaths = store.tabs.filter((t) => t.filePath);
+      if (tabsWithPaths.length > 0 && activeIndex < tabsWithPaths.length) {
+        store.setActiveTab(tabsWithPaths[activeIndex].id);
+      }
+    } catch {
+      safeRemoveItem("mikedown-session");
+    }
+  },
 }));
