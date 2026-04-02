@@ -192,7 +192,7 @@ export const useAppStore = create<AppState>((set) => ({
   sidebarCollapsed: false,
   isDragOver: false,
   isDropZoneVisible: true,
-  theme: "dark",
+  theme: (safeGetItem("mikedown-theme") as Theme) || "dark",
   fontSize: 100,
   searchOpen: false,
 
@@ -288,9 +288,16 @@ export const useAppStore = create<AppState>((set) => ({
   setDragOver: (v) => set({ isDragOver: v }),
   showDropZone: () => set({ isDropZoneVisible: true }),
   hideDropZone: () => set({ isDropZoneVisible: false }),
-  setTheme: (t) => set({ theme: t }),
+  setTheme: (t) => {
+    safeSetItem("mikedown-theme", t);
+    set({ theme: t });
+  },
   toggleTheme: () =>
-    set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+    set((s) => {
+      const next = s.theme === "dark" ? "light" : "dark";
+      safeSetItem("mikedown-theme", next);
+      return { theme: next };
+    }),
   zoom: (dir) =>
     set((s) => ({ fontSize: Math.max(70, Math.min(140, s.fontSize + dir * 10)) })),
 
