@@ -5,9 +5,12 @@ export default function SearchBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const setSearchOpen = useAppStore((s) => s.setSearchOpen);
   const [query, setQuery] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [showReplace, setShowReplace] = useState(false);
   const [currentMatch, setCurrentMatch] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const clearHighlights = useCallback(() => {
     document.querySelectorAll("mark.search-highlight").forEach((el) => {
@@ -106,6 +109,39 @@ export default function SearchBar() {
     }
   }, [currentMatch, totalMatches]);
 
+  const replaceCurrent = useCallback(() => {
+    if (totalMatches === 0 || !query.trim()) return;
+    const store = useAppStore.getState();
+    const md = store.markdownContent;
+    const lowerQuery = query.toLowerCase();
+    const lowerMd = md.toLowerCase();
+    let matchIndex = 0;
+    let idx = lowerMd.indexOf(lowerQuery);
+    while (idx !== -1) {
+      matchIndex++;
+      if (matchIndex === currentMatch) {
+        const newMd = md.slice(0, idx) + replaceText + md.slice(idx + query.length);
+        store.setMarkdownContent(newMd);
+        // Re-search after replace (wait for content to update)
+        setTimeout(() => performSearch(query), 200);
+        return;
+      }
+      idx = lowerMd.indexOf(lowerQuery, idx + query.length);
+    }
+  }, [query, replaceText, currentMatch, totalMatches, performSearch]);
+
+  const replaceAll = useCallback(() => {
+    if (totalMatches === 0 || !query.trim()) return;
+    const store = useAppStore.getState();
+    const md = store.markdownContent;
+    // Case-insensitive replace all
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "gi");
+    const newMd = md.replace(regex, replaceText);
+    store.setMarkdownContent(newMd);
+    setTimeout(() => performSearch(query), 200);
+  }, [query, replaceText, totalMatches, performSearch]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -123,6 +159,8 @@ export default function SearchBar() {
   useEffect(() => {
     if (!searchOpen) {
       setQuery("");
+      setReplaceText("");
+      setShowReplace(false);
       clearHighlights();
     }
   }, [searchOpen, clearHighlights]);
@@ -131,21 +169,53 @@ export default function SearchBar() {
 
   return (
     <div className="search-bar">
-      <input
-        ref={inputRef}
-        type="text"
-        className="search-input"
-        placeholder="Search..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <span className="search-count">
-        {totalMatches > 0 ? `${currentMatch} of ${totalMatches}` : "No matches"}
-      </span>
-      <button className="search-nav" onClick={() => navigateMatch(-1)} title="Previous match" aria-label="Previous match">&#x25B2;</button>
-      <button className="search-nav" onClick={() => navigateMatch(1)} title="Next match" aria-label="Next match">&#x25BC;</button>
-      <button className="search-close" onClick={() => setSearchOpen(false)} title="Close search" aria-label="Close search">&#x2715;</button>
+      <div className="search-row">
+        <button
+          className="search-toggle-replace"
+          onClick={() => setShowReplace((v) => !v)}
+          title={showReplace ? "Hide replace" : "Show replace"}
+          aria-label={showReplace ? "Hide replace" : "Show replace"}
+          aria-expanded={showReplace}
+        >
+          {showReplace ? "\u25BC" : "\u25B6"}
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          className="search-input"
+          placeholder="Search..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <span className="search-count">
+          {totalMatches > 0 ? `${currentMatch} of ${totalMatches}` : "No matches"}
+        </span>
+        <button className="search-nav" onClick={() => navigateMatch(-1)} title="Previous match" aria-label="Previous match">&#x25B2;</button>
+        <button className="search-nav" onClick={() => navigateMatch(1)} title="Next match" aria-label="Next match">&#x25BC;</button>
+        <button className="search-close" onClick={() => setSearchOpen(false)} title="Close search" aria-label="Close search">&#x2715;</button>
+      </div>
+      {showReplace && (
+        <div className="search-row replace-row">
+          <div className="search-toggle-replace-spacer" />
+          <input
+            ref={replaceInputRef}
+            type="text"
+            className="search-input"
+            placeholder="Replace..."
+            value={replaceText}
+            onChange={(e) => setReplaceText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                replaceCurrent();
+              }
+            }}
+          />
+          <button className="search-nav replace-btn" onClick={replaceCurrent} title="Replace" aria-label="Replace">Replace</button>
+          <button className="search-nav replace-btn" onClick={replaceAll} title="Replace all" aria-label="Replace all">All</button>
+        </div>
+      )}
     </div>
   );
 }
