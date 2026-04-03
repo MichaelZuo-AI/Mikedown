@@ -11,7 +11,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - **Multi-file tabs** — open multiple documents (`Cmd+T` new, `Cmd+W` close)
 - **Split-pane editor** with live preview (CodeMirror 6)
 - **Vim/Emacs keybindings** — cycle modes via toolbar button
-- **Document search** (`Cmd+F`) with match highlighting and navigation
+- **Search & replace** (`Cmd+F`) with match highlighting, navigation, and replace/replace all
 - **KaTeX math rendering** — inline `$...$` and display `$$...$$`
 - **Mermaid diagrams** — render flowcharts, sequence diagrams, and more
 - **Export to HTML** — standalone file with embedded styles
@@ -29,7 +29,7 @@ AI tools like Claude, ChatGPT, and Copilot think and respond in Markdown — str
 - macOS file association — set as default app for `.md` files
 - macOS-native overlay titlebar
 - Print-ready output (`Cmd+P`)
-- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+F` search, `Cmd+T` new tab, `Cmd+W` close tab, `Cmd+\` toggle sidebar, `A+/A-` zoom
+- Keyboard shortcuts: `Cmd+O` open, `Cmd+E` edit, `Cmd+S` save, `Cmd+F` search, `Cmd+T` new tab, `Cmd+W` close tab, `Cmd+\` toggle sidebar, `Cmd+=`/`Cmd+-` zoom, `Cmd+0` reset zoom, trackpad pinch-to-zoom
 
 ## Install
 
@@ -84,6 +84,27 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 | State | [Zustand](https://zustand-demo.pmnd.rs/) |
 
 ## Changelog
+
+### v0.13.0
+
+- Search & replace — collapsible replace row with single replace and replace all
+- Zoom via keyboard — `Cmd+=`/`Cmd+-` to zoom in/out, `Cmd+0` to reset
+- Trackpad pinch-to-zoom support on macOS
+- Fix zoom not visually working — switched from `font-size: rem` to CSS `zoom` for uniform scaling
+- Fix Homebrew CI race condition — cask update now triggers after release build completes
+
+### v0.12.0
+
+- Fix code blocks not scrolling with page content
+- Fix theme always resetting to dark mode on new window
+
+### v0.11.1
+
+- Maintenance release
+
+### v0.11.0
+
+- Collapsible sidebar with toggle button for full-screen reading mode
 
 ### v0.10.0
 
