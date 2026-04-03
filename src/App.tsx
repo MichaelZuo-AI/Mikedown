@@ -28,6 +28,7 @@ export default function App() {
   const setDragOver = useAppStore((s) => s.setDragOver);
   const newTab = useAppStore((s) => s.newTab);
   const closeTab = useAppStore((s) => s.closeTab);
+  const zoom = useAppStore((s) => s.zoom);
   const rafRef = useRef(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -119,10 +120,37 @@ export default function App() {
         e.preventDefault();
         closeTab(useAppStore.getState().activeTabId);
       }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        zoom(1);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "-") {
+        e.preventDefault();
+        zoom(-1);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "0") {
+        e.preventDefault();
+        useAppStore.setState({ fontSize: 100 });
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar, toggleEditMode, toggleSearch, newTab, closeTab]);
+  }, [toggleSidebar, toggleEditMode, toggleSearch, newTab, closeTab, zoom]);
+
+  // Trackpad pinch-to-zoom (macOS sends wheel events with ctrlKey for pinch gestures)
+  useEffect(() => {
+    let lastZoomTime = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastZoomTime < 150) return; // Throttle rapid pinch events
+      lastZoomTime = now;
+      zoom(e.deltaY < 0 ? 1 : -1);
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [zoom]);
 
   // Paste handler — skip when in edit mode (CodeMirror handles paste)
   useEffect(() => {
