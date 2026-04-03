@@ -173,7 +173,7 @@ export default function MarkdownRenderer() {
     <div
       ref={contentRef}
       className="content"
-      style={{ fontSize: `${fontSize / 100}rem` }}
+      style={{ zoom: fontSize / 100 }}
       onClick={handleClick}
       dangerouslySetInnerHTML={{ __html: htmlContent }}
     />

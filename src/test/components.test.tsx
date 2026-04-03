@@ -275,18 +275,18 @@ describe("MarkdownRenderer", () => {
     expect(div).toBeInTheDocument();
   });
 
-  it("applies font size from the store as a rem style", () => {
+  it("applies zoom from the store as a CSS zoom style", () => {
     useAppStore.setState({ fontSize: 120 });
     const { container } = render(<MarkdownRenderer />);
     const div = container.querySelector(".content") as HTMLElement;
-    expect(div.style.fontSize).toBe("1.2rem");
+    expect(div.style.zoom).toBe("1.2");
   });
 
-  it("applies 100% font size as 1rem by default", () => {
+  it("applies 100% zoom as 1 by default", () => {
     useAppStore.setState({ fontSize: 100 });
     const { container } = render(<MarkdownRenderer />);
     const div = container.querySelector(".content") as HTMLElement;
-    expect(div.style.fontSize).toBe("1rem");
+    expect(div.style.zoom).toBe("1");
   });
 
   it("renders HTML content from the store via dangerouslySetInnerHTML", () => {
