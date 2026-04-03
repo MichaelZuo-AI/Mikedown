@@ -1,6 +1,6 @@
 [package]
 name = "mikedown"
-version = "0.12.0"
+version = "0.13.0"
 description = "MikeDown — Markdown editor and viewer"
 authors = ["Michael Zuo"]
 license = "MIT"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
