@@ -8,7 +8,7 @@ import { useAppStore } from "@/store/appStore";
 function resetStore() {
   // Reset to a fresh single-tab state
   useAppStore.setState({
-    tabs: [{ id: "test-tab-1", markdownContent: "", htmlContent: "", fileName: "No file opened", filePath: "", wordCount: 0, readingTime: 0, dirty: false }],
+    tabs: [{ id: "test-tab-1", markdownContent: "", htmlContent: "", fileName: "No file opened", filePath: "", wordCount: 0, readingTime: 0, dirty: false, scrollTop: 0 }],
     activeTabId: "test-tab-1",
     markdownContent: "",
     htmlContent: "",

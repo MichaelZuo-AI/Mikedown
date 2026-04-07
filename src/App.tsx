@@ -273,7 +273,6 @@ export default function App() {
       e.preventDefault();
       const container = contentAreaRef.current;
       if (!container) return;
-      const startX = e.clientX;
       const containerRect = container.getBoundingClientRect();
 
       const onMouseMove = (ev: MouseEvent) => {
