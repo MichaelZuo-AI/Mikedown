@@ -465,12 +465,23 @@ mark.search-current {
 }
 
 .content-area.split .editor-pane {
-  flex: 1;
   min-width: 0;
-  border-right: 1px solid var(--border);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.split-divider {
+  width: 5px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.split-divider:hover,
+.split-divider:active {
+  background: var(--accent, #7c6af7);
 }
 
 .content-area.split .content-wrap {
@@ -864,7 +875,7 @@ mark.search-current {
 /* ── Print styles ── */
 @media print {
   .sidebar, .toolbar, .tab-bar, .progress, .drop-zone, .editor-pane,
-  .search-bar, .code-header .copy-btn, .toast { display: none !important; }
+  .split-divider, .search-bar, .code-header .copy-btn, .toast { display: none !important; }
 
   #root { display: block; }
   .main { display: block; }

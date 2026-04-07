@@ -29,8 +29,11 @@ export default function App() {
   const newTab = useAppStore((s) => s.newTab);
   const closeTab = useAppStore((s) => s.closeTab);
   const zoom = useAppStore((s) => s.zoom);
+  const splitRatio = useAppStore((s) => s.splitRatio);
+  const setSplitRatio = useAppStore((s) => s.setSplitRatio);
   const rafRef = useRef(0);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
 
   // Apply theme to <html>
@@ -264,6 +267,33 @@ export default function App() {
     return () => wrap.removeEventListener("scroll", onScrollProgress);
   }, [onScrollProgress]);
 
+  const onDividerMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const container = contentAreaRef.current;
+      if (!container) return;
+      const startX = e.clientX;
+      const containerRect = container.getBoundingClientRect();
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const pct =
+          ((ev.clientX - containerRect.left) / containerRect.width) * 100;
+        setSplitRatio(pct);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    },
+    [setSplitRatio],
+  );
+
   return (
     <>
       <ProgressBar progress={scrollProgress} />
@@ -272,11 +302,18 @@ export default function App() {
         <Toolbar />
         <TabBar />
         <SearchBar />
-        <div className={`content-area${editMode ? " split" : ""}`}>
+        <div className={`content-area${editMode ? " split" : ""}`} ref={contentAreaRef}>
           {editMode && (
-            <div className="editor-pane">
+            <div className="editor-pane" style={{ flexBasis: `${splitRatio}%`, flex: "none" }}>
               <Editor />
             </div>
+          )}
+          {editMode && (
+            <div
+              className="split-divider"
+              onMouseDown={onDividerMouseDown}
+              onDoubleClick={() => setSplitRatio(50)}
+            />
           )}
           <div className="content-wrap" ref={wrapRef}>
             <DropZone />

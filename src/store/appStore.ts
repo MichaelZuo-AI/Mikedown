@@ -35,6 +35,7 @@ interface AppState {
   theme: Theme;
   fontSize: number; // percentage 70-140
   searchOpen: boolean;
+  splitRatio: number; // editor pane width percentage (20-80)
 
   // Editor keybindings
   keybindingMode: KeybindingMode;
@@ -73,6 +74,7 @@ interface AppState {
   dismissToast: () => void;
   setKeybindingMode: (mode: KeybindingMode) => void;
   cycleKeybindingMode: () => void;
+  setSplitRatio: (ratio: number) => void;
   addRecentFile: (name: string, path: string) => void;
   clearRecentFiles: () => void;
   restoreDraft: () => void;
@@ -195,6 +197,7 @@ export const useAppStore = create<AppState>((set) => ({
   theme: (safeGetItem("mikedown-theme") as Theme) || "dark",
   fontSize: 100,
   searchOpen: false,
+  splitRatio: Number(safeGetItem("mikedown-split-ratio")) || 50,
 
   keybindingMode: (safeGetItem("mikedown-keybinding") as KeybindingMode) || "default",
 
@@ -392,6 +395,12 @@ export const useAppStore = create<AppState>((set) => ({
       safeSetItem("mikedown-keybinding", next);
       return { keybindingMode: next };
     }),
+
+  setSplitRatio: (ratio) => {
+    const clamped = Math.max(20, Math.min(80, ratio));
+    safeSetItem("mikedown-split-ratio", String(clamped));
+    set({ splitRatio: clamped });
+  },
 
   addRecentFile: (name, path) => {
     if (!path) return;
