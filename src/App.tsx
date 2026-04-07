@@ -31,6 +31,7 @@ export default function App() {
   const zoom = useAppStore((s) => s.zoom);
   const splitRatio = useAppStore((s) => s.splitRatio);
   const setSplitRatio = useAppStore((s) => s.setSplitRatio);
+  const activeTabId = useAppStore((s) => s.activeTabId);
   const rafRef = useRef(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
@@ -293,6 +294,28 @@ export default function App() {
     },
     [setSplitRatio],
   );
+
+  // Save scroll position on scroll, restore on tab switch
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const onScroll = () => {
+      useAppStore.getState().saveScrollTop(wrap.scrollTop);
+    };
+    wrap.addEventListener("scroll", onScroll);
+    return () => wrap.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const tab = useAppStore.getState().tabs.find((t) => t.id === activeTabId);
+    if (tab) {
+      requestAnimationFrame(() => {
+        wrap.scrollTop = tab.scrollTop;
+      });
+    }
+  }, [activeTabId]);
 
   return (
     <>
