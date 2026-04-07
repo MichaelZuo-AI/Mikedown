@@ -18,6 +18,7 @@ export interface Tab {
   wordCount: number;
   readingTime: number;
   dirty: boolean;
+  scrollTop: number;
 }
 
 interface AppState {
@@ -82,6 +83,7 @@ interface AppState {
   newTab: () => void;
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
+  saveScrollTop: (scrollTop: number) => void;
 
   // Session persistence
   restoreSession: () => Promise<void>;
@@ -142,6 +144,7 @@ function createEmptyTab(): Tab {
     wordCount: 0,
     readingTime: 0,
     dirty: false,
+    scrollTop: 0,
   };
 }
 
@@ -269,6 +272,7 @@ export const useAppStore = create<AppState>((set) => ({
         wordCount: words,
         readingTime: readMin,
         dirty: false,
+        scrollTop: 0,
       };
       const tabs = [...s.tabs, newTab];
       return {
@@ -494,6 +498,14 @@ export const useAppStore = create<AppState>((set) => ({
         ...deriveFromActiveTab(s.tabs, id),
         isDropZoneVisible: !tab.markdownContent,
       };
+    }),
+
+  saveScrollTop: (scrollTop) =>
+    set((s) => {
+      const tabs = s.tabs.map((t) =>
+        t.id === s.activeTabId ? { ...t, scrollTop } : t,
+      );
+      return { tabs };
     }),
 
   restoreSession: async () => {

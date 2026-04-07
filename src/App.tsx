@@ -29,6 +29,7 @@ export default function App() {
   const newTab = useAppStore((s) => s.newTab);
   const closeTab = useAppStore((s) => s.closeTab);
   const zoom = useAppStore((s) => s.zoom);
+  const activeTabId = useAppStore((s) => s.activeTabId);
   const rafRef = useRef(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -263,6 +264,28 @@ export default function App() {
     wrap.addEventListener("scroll", onScrollProgress);
     return () => wrap.removeEventListener("scroll", onScrollProgress);
   }, [onScrollProgress]);
+
+  // Save scroll position on scroll, restore on tab switch
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const onScroll = () => {
+      useAppStore.getState().saveScrollTop(wrap.scrollTop);
+    };
+    wrap.addEventListener("scroll", onScroll);
+    return () => wrap.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const tab = useAppStore.getState().tabs.find((t) => t.id === activeTabId);
+    if (tab) {
+      requestAnimationFrame(() => {
+        wrap.scrollTop = tab.scrollTop;
+      });
+    }
+  }, [activeTabId]);
 
   return (
     <>
