@@ -2,7 +2,8 @@
  * Tests for multi-tab functionality in appStore
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 
 function resetStore() {
@@ -197,5 +198,85 @@ describe("appStore — exportToPdf", () => {
   it("exportToPdf is importable from exportOps", async () => {
     const { exportToPdf } = await import("@/lib/exportOps");
     expect(typeof exportToPdf).toBe("function");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("appStore — restoreSession + file-association race", () => {
+  beforeEach(() => {
+    resetStore();
+    vi.clearAllMocks();
+  });
+
+  it("does not override an already-active file that was loaded via file-association", async () => {
+    // Simulate previous session: two legacy files, second one was active.
+    localStorage.setItem(
+      "mikedown-session",
+      JSON.stringify({
+        filePaths: ["/legacy1.md", "/legacy2.md"],
+        activeIndex: 1,
+      }),
+    );
+
+    // Use deferred promises so we can interleave restoreSession with a
+    // concurrent file-association load.
+    let resolveLegacy1: (v: string) => void;
+    let resolveLegacy2: (v: string) => void;
+    const legacy1Pending = new Promise<string>((res) => { resolveLegacy1 = res; });
+    const legacy2Pending = new Promise<string>((res) => { resolveLegacy2 = res; });
+    (readTextFile as unknown as Mock).mockImplementation((p: string) => {
+      if (p === "/legacy1.md") return legacy1Pending;
+      if (p === "/legacy2.md") return legacy2Pending;
+      throw new Error(`unexpected path: ${p}`);
+    });
+
+    // Kick off restoreSession. It synchronously reads session data from
+    // localStorage (capturing the legacy filePaths + activeIndex=1 in memory)
+    // and then awaits the first readTextFile.
+    const restorePromise = get().restoreSession();
+
+    // Flush microtasks so restoreSession reaches its first await.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // File-association fires now — target.md loads into the initial empty tab.
+    // This also overwrites mikedown-session in localStorage with [/target.md],
+    // but restoreSession already holds the legacy data in its own closure.
+    get().loadMarkdown("# Target", "target.md", "/target.md");
+    expect(get().fileName).toBe("target.md");
+
+    // Now let the legacy reads finish — restoreSession will append two new tabs
+    // and then call setActiveTab(tabsWithPaths[activeIndex]) at the end.
+    resolveLegacy1!("# Legacy 1");
+    resolveLegacy2!("# Legacy 2");
+    await restorePromise;
+
+    // The user opened target.md — they must still see target.md, not a legacy file.
+    expect(get().fileName).toBe("target.md");
+    expect(get().filePath).toBe("/target.md");
+  });
+
+  it("still restores the previously-active file when no other file was loaded", async () => {
+    localStorage.setItem(
+      "mikedown-session",
+      JSON.stringify({
+        filePaths: ["/a.md", "/b.md", "/c.md"],
+        activeIndex: 2,
+      }),
+    );
+
+    (readTextFile as unknown as Mock).mockImplementation(async (p: string) => {
+      if (p === "/a.md") return "# A";
+      if (p === "/b.md") return "# B";
+      if (p === "/c.md") return "# C";
+      throw new Error(`unexpected path: ${p}`);
+    });
+
+    await get().restoreSession();
+
+    // With no competing file-association load, the session's activeIndex should win.
+    expect(get().fileName).toBe("c.md");
+    expect(get().filePath).toBe("/c.md");
   });
 });

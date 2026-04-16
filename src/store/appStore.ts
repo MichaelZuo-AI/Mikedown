@@ -536,11 +536,24 @@ export const useAppStore = create<AppState>((set) => ({
         }
       }
 
-      // Activate the previously active tab
+      // Activate the previously-active tab. But if another file was loaded
+      // concurrently (e.g. file-association racing with us), the loop's final
+      // loadMarkdown will have stolen the active tab — yield it back to the
+      // user-requested file. Lookup is by path, not index, so missing-file
+      // skips don't shift the activeIndex.
       const store = useAppStore.getState();
-      const tabsWithPaths = store.tabs.filter((t) => t.filePath);
-      if (tabsWithPaths.length > 0 && activeIndex < tabsWithPaths.length) {
-        store.setActiveTab(tabsWithPaths[activeIndex].id);
+      const restoreSet = new Set(filePaths);
+      const externalTab = store.tabs.find(
+        (t) => t.filePath && !restoreSet.has(t.filePath),
+      );
+      if (externalTab) {
+        store.setActiveTab(externalTab.id);
+      } else {
+        const targetPath = filePaths[activeIndex];
+        const targetTab = store.tabs.find((t) => t.filePath === targetPath);
+        if (targetTab) {
+          store.setActiveTab(targetTab.id);
+        }
       }
     } catch {
       safeRemoveItem("mikedown-session");
