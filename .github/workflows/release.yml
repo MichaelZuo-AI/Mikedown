@@ -47,6 +47,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'MikeDown ${{ github.ref_name }}'
           releaseBody: 'See the [changelog](https://github.com/MichaelZuo-AI/Mikedown#changelog) for details.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

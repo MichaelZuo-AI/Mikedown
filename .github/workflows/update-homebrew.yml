@@ -1,19 +1,31 @@
 name: Update Homebrew Cask
 
 on:
-  workflow_run:
-    workflows: ["Release"]
-    types: [completed]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to process, for example v0.15.0"
+        required: true
+        type: string
 
 jobs:
   update-cask:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Extract version from tag
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          MANUAL_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${{ github.event.workflow_run.head_branch }}"
+          TAG="${MANUAL_TAG:-$RELEASE_TAG}"
+          if [ -z "$TAG" ]; then
+            echo "Could not determine release tag" >&2
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Download DMG and compute SHA256
@@ -22,7 +34,17 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           URL="https://github.com/MichaelZuo-AI/Mikedown/releases/download/v${VERSION}/MikeDown_${VERSION}_aarch64.dmg"
           echo "Downloading ${URL}..."
-          curl -fSL -o mikedown.dmg "${URL}"
+          for attempt in 1 2 3 4 5; do
+            if curl -fSL -o mikedown.dmg "${URL}"; then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Failed to download ${URL} after ${attempt} attempts" >&2
+              exit 1
+            fi
+            echo "Download not ready yet, retrying in 15s..."
+            sleep 15
+          done
           SHA=$(shasum -a 256 mikedown.dmg | cut -d ' ' -f 1)
           echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
           echo "SHA256: ${SHA}"
