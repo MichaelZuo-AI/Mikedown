@@ -4,15 +4,17 @@
 
 import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
 import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { readFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 import { exportToHtml } from "@/lib/exportOps";
 
 const mockSave = save as Mock;
+const mockReadFile = readFile as Mock;
 const mockWriteTextFile = writeTextFile as Mock;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  document.body.innerHTML = "";
   useAppStore.setState({
     htmlContent: "<h1>Test</h1>",
     fileName: "test.md",
@@ -74,6 +76,51 @@ describe("exportToHtml", () => {
     await exportToHtml();
     const writtenHtml = mockWriteTextFile.mock.calls[0][1] as string;
     expect(writtenHtml).toContain("<h1>Test</h1>");
+  });
+
+  it("exports the current rendered DOM when available", async () => {
+    document.body.innerHTML = `
+      <div class="content">
+        <div class="mermaid">
+          <svg viewBox="0 0 10 10"><text>A</text></svg>
+        </div>
+      </div>
+    `;
+
+    useAppStore.setState({
+      htmlContent: '<div class="mermaid">graph TD; A--&gt;B;</div>',
+    });
+
+    mockSave.mockResolvedValueOnce("/path/test.html");
+    mockWriteTextFile.mockResolvedValueOnce(undefined);
+
+    await exportToHtml();
+
+    const writtenHtml = mockWriteTextFile.mock.calls[0][1] as string;
+    expect(writtenHtml).toContain("<svg");
+    expect(writtenHtml).not.toContain("graph TD");
+  });
+
+  it("inlines local images from the rendered DOM into the exported HTML", async () => {
+    document.body.innerHTML = `
+      <div class="content">
+        <img
+          src="http://asset.localhost/%2Ftmp%2Fphoto.png"
+          data-local-path="/tmp/photo.png"
+          data-original-src="photo.png"
+          alt="test"
+        />
+      </div>
+    `;
+
+    mockReadFile.mockResolvedValueOnce(new Uint8Array([0, 1, 2]));
+    mockSave.mockResolvedValueOnce("/path/test.html");
+    mockWriteTextFile.mockResolvedValueOnce(undefined);
+
+    await exportToHtml();
+
+    const writtenHtml = mockWriteTextFile.mock.calls[0][1] as string;
+    expect(writtenHtml).toContain("data:image/png;base64,AAEC");
   });
 
   it("shows toast on write error", async () => {

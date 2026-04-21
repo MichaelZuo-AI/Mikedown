@@ -54,15 +54,6 @@ function normalizePath(p: string): string {
   return "/" + out.join("/");
 }
 
-function resolveImageSrc(src: string, fileDir: string): string {
-  if (src.startsWith("/")) {
-    return convertFileSrc(src);
-  }
-  // Relative path — resolve against file directory and normalize ../
-  const resolved = normalizePath(`${fileDir}/${src}`);
-  return convertFileSrc(resolved);
-}
-
 function resolveLocalImages(el: HTMLElement, filePath: string) {
   if (!filePath) return;
   const fileDir = filePath.replace(/[/\\][^/\\]*$/, "");
@@ -70,13 +61,19 @@ function resolveLocalImages(el: HTMLElement, filePath: string) {
   for (const img of Array.from(imgs)) {
     const src = img.getAttribute("src");
     if (src && isLocalPath(src)) {
-      img.src = resolveImageSrc(src, fileDir);
+      const resolvedPath = src.startsWith("/") ? src : normalizePath(`${fileDir}/${src}`);
+      img.dataset.localPath = resolvedPath;
+      img.dataset.originalSrc = src;
+      img.src = convertFileSrc(resolvedPath);
       img.onerror = () => {
         const placeholder = document.createElement("div");
         placeholder.className = "img-error";
         placeholder.textContent = `Image not found: ${src}`;
         img.replaceWith(placeholder);
       };
+    } else {
+      delete img.dataset.localPath;
+      delete img.dataset.originalSrc;
     }
   }
 }

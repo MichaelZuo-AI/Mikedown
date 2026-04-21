@@ -47,6 +47,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/plugin-fs", () => ({
+  readFile: vi.fn(),
   readTextFile: vi.fn(),
   writeTextFile: vi.fn(() => Promise.resolve()),
   watch: vi.fn(),

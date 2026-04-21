@@ -710,6 +710,36 @@ describe("SearchBar", () => {
     render(<SearchBar />);
     expect(screen.getByText("No matches")).toBeInTheDocument();
   });
+
+  it("ignores generated preview chrome like the code-copy button text", () => {
+    useAppStore.setState({
+      searchOpen: true,
+      markdownContent: "```js\nconst x = 1;\n```",
+      htmlContent: `
+        <pre>
+          <div class="code-header">
+            <span class="code-lang">js</span>
+            <button class="copy-btn" data-copy>Copy</button>
+          </div>
+          <code>const x = 1;</code>
+        </pre>
+      `,
+    });
+
+    render(
+      <>
+        <MarkdownRenderer />
+        <SearchBar />
+      </>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search..."), {
+      target: { value: "Copy" },
+    });
+
+    expect(screen.getByText("No matches")).toBeInTheDocument();
+    expect(document.querySelector("mark.search-highlight")).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

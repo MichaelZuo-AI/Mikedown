@@ -2,8 +2,8 @@
  * Tests for multi-tab functionality in appStore
  */
 
-import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
-import { readTextFile } from "@tauri-apps/plugin-fs";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 
 function resetStore() {
@@ -278,5 +278,62 @@ describe("appStore — restoreSession + file-association race", () => {
     // With no competing file-association load, the session's activeIndex should win.
     expect(get().fileName).toBe("c.md");
     expect(get().filePath).toBe("/c.md");
+  });
+});
+
+describe("appStore — tab-scoped async updates", () => {
+  beforeEach(() => {
+    resetStore();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps delayed markdown parsing scoped to the edited tab after switching tabs", async () => {
+    get().loadMarkdown("# First", "first.md", "/first.md");
+    const firstId = get().activeTabId;
+
+    get().newTab();
+    get().loadMarkdown("# Second", "second.md", "/second.md");
+    const secondId = get().activeTabId;
+
+    get().setActiveTab(firstId);
+    get().setMarkdownContent("# First updated");
+    get().setActiveTab(secondId);
+
+    await vi.advanceTimersByTimeAsync(150);
+
+    const firstTab = get().tabs.find((t) => t.id === firstId)!;
+    const secondTab = get().tabs.find((t) => t.id === secondId)!;
+    expect(firstTab.htmlContent).toContain("First updated");
+    expect(secondTab.htmlContent).toContain("Second");
+  });
+
+  it("keeps delayed file autosave scoped to the edited tab after switching tabs", async () => {
+    const mockWriteTextFile = writeTextFile as unknown as Mock;
+    mockWriteTextFile.mockResolvedValue(undefined);
+
+    get().loadMarkdown("# First", "first.md", "/first.md");
+    const firstId = get().activeTabId;
+
+    get().newTab();
+    get().loadMarkdown("# Second", "second.md", "/second.md");
+    const secondId = get().activeTabId;
+
+    get().setActiveTab(firstId);
+    get().setMarkdownContent("# First autosaved");
+    get().setActiveTab(secondId);
+
+    await vi.advanceTimersByTimeAsync(3000);
+
+    const firstTab = get().tabs.find((t) => t.id === firstId)!;
+    const secondTab = get().tabs.find((t) => t.id === secondId)!;
+
+    expect(mockWriteTextFile).toHaveBeenCalledWith("/first.md", "# First autosaved");
+    expect(firstTab.dirty).toBe(false);
+    expect(secondTab.dirty).toBe(false);
   });
 });

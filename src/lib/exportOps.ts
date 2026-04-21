@@ -1,9 +1,102 @@
 import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { readFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "@/store/appStore";
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function guessMimeType(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    case "bmp":
+      return "image/bmp";
+    case "avif":
+      return "image/avif";
+    default:
+      return "image/png";
+  }
+}
+
+function unwrapMatches(root: HTMLElement, selector: string): void {
+  root.querySelectorAll(selector).forEach((el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    parent.replaceChild(document.createTextNode(el.textContent || ""), el);
+    parent.normalize();
+  });
+}
+
+function getLocalImagePath(img: HTMLImageElement): string | null {
+  const explicitPath = img.dataset.localPath;
+  if (explicitPath) return explicitPath;
+
+  try {
+    const url = new URL(img.src);
+    if (!url.hostname.endsWith("asset.localhost")) return null;
+    return decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+}
+
+async function inlineLocalImages(root: HTMLElement): Promise<void> {
+  const imgs = Array.from(root.querySelectorAll<HTMLImageElement>("img"));
+
+  await Promise.all(imgs.map(async (img) => {
+    const localPath = getLocalImagePath(img);
+    if (!localPath) {
+      img.removeAttribute("data-local-path");
+      img.removeAttribute("data-original-src");
+      return;
+    }
+
+    try {
+      const bytes = await readFile(localPath);
+      const mime = guessMimeType(img.dataset.originalSrc || localPath);
+      img.src = `data:${mime};base64,${bytesToBase64(bytes)}`;
+      img.removeAttribute("data-local-path");
+      img.removeAttribute("data-original-src");
+    } catch {
+      // Keep the existing src if inlining fails.
+    }
+  }));
+}
+
+async function getExportContentHtml(fallbackHtml: string): Promise<string> {
+  const contentEl = document.querySelector(".content") as HTMLElement | null;
+  if (!contentEl) return fallbackHtml;
+
+  const clone = contentEl.cloneNode(true) as HTMLElement;
+
+  unwrapMatches(clone, "mark.search-highlight");
+  clone.querySelectorAll("[data-copy]").forEach((button) => button.remove());
+
+  await inlineLocalImages(clone);
+
+  return clone.innerHTML;
 }
 
 export async function exportToHtml() {
@@ -17,6 +110,7 @@ export async function exportToHtml() {
   if (!selected) return;
 
   const isDark = store.theme === "dark";
+  const renderedHtml = await getExportContentHtml(store.htmlContent);
   const html = `<!DOCTYPE html>
 <html lang="en"${isDark ? "" : ' data-theme="light"'}>
 <head>
@@ -38,7 +132,7 @@ img { max-width: 100%; }
 </style>
 </head>
 <body>
-${store.htmlContent}
+${renderedHtml}
 </body>
 </html>`;
 

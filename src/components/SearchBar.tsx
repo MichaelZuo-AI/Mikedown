@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAppStore } from "@/store/appStore";
 
+const SEARCH_EXCLUDED_SELECTOR = ".code-header,[data-copy],svg,script,style,.katex,.katex-display";
+
+function isSearchableTextNode(node: Text): boolean {
+  const parent = node.parentElement;
+  if (!parent) return false;
+  return !parent.closest(SEARCH_EXCLUDED_SELECTOR);
+}
+
 export default function SearchBar() {
   const searchOpen = useAppStore((s) => s.searchOpen);
   const setSearchOpen = useAppStore((s) => s.setSearchOpen);
@@ -53,7 +61,10 @@ export default function SearchBar() {
     const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT);
     const textNodes: Text[] = [];
     while (walker.nextNode()) {
-      textNodes.push(walker.currentNode as Text);
+      const node = walker.currentNode as Text;
+      if (isSearchableTextNode(node)) {
+        textNodes.push(node);
+      }
     }
 
     let matchCount = 0;

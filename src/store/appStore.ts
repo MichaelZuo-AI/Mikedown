@@ -80,6 +80,7 @@ interface AppState {
   clearRecentFiles: () => void;
   restoreDraft: () => void;
   clearDraft: () => void;
+  markTabSaved: (tabId: string, path: string, name: string) => void;
 
   // Tab actions
   newTab: () => void;
@@ -111,9 +112,9 @@ function loadRecentFiles(): RecentFile[] {
   }
 }
 
-let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
-let autoSaveFileTimer: ReturnType<typeof setTimeout> | undefined;
-let parseTimer: ReturnType<typeof setTimeout> | undefined;
+const draftTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const fileAutoSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const parseTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 interface SessionData {
   filePaths: string[];
@@ -154,13 +155,15 @@ function getActiveTab(state: { tabs: Tab[]; activeTabId: string }): Tab {
   return state.tabs.find((t) => t.id === state.activeTabId) || state.tabs[0];
 }
 
+function updateTabById(tabs: Tab[], tabId: string, updates: Partial<Tab>): Tab[] {
+  return tabs.map((t) => (t.id === tabId ? { ...t, ...updates } : t));
+}
+
 function updateActiveTab(
   state: { tabs: Tab[]; activeTabId: string },
   updates: Partial<Tab>,
 ): Tab[] {
-  return state.tabs.map((t) =>
-    t.id === state.activeTabId ? { ...t, ...updates } : t,
-  );
+  return updateTabById(state.tabs, state.activeTabId, updates);
 }
 
 function deriveFromActiveTab(tabs: Tab[], activeTabId: string) {
@@ -175,6 +178,45 @@ function deriveFromActiveTab(tabs: Tab[], activeTabId: string) {
     readingTime: tab.readingTime,
     dirty: tab.dirty,
   };
+}
+
+function clearTimer(timerMap: Map<string, ReturnType<typeof setTimeout>>, tabId: string): void {
+  const timer = timerMap.get(tabId);
+  if (timer) {
+    clearTimeout(timer);
+    timerMap.delete(tabId);
+  }
+}
+
+function clearTabTimers(tabId: string): void {
+  clearTimer(parseTimers, tabId);
+  clearTimer(draftTimers, tabId);
+  clearTimer(fileAutoSaveTimers, tabId);
+}
+
+function clearDraftForSavedTab(tab: Pick<Tab, "fileName" | "filePath" | "markdownContent">): void {
+  const raw = safeGetItem("mikedown-draft");
+  if (!raw) return;
+
+  try {
+    const draft = JSON.parse(raw) as {
+      content?: string;
+      fileName?: string;
+      filePath?: string;
+    };
+    const samePath = Boolean(tab.filePath) && draft.filePath === tab.filePath;
+    const sameUntitled =
+      !tab.filePath &&
+      !draft.filePath &&
+      draft.fileName === tab.fileName &&
+      draft.content === tab.markdownContent;
+
+    if (samePath || sameUntitled) {
+      safeRemoveItem("mikedown-draft");
+    }
+  } catch {
+    safeRemoveItem("mikedown-draft");
+  }
 }
 
 const initialTab = createEmptyTab();
@@ -311,62 +353,79 @@ export const useAppStore = create<AppState>((set) => ({
   toggleEditMode: () => set((s) => ({ editMode: !s.editMode })),
 
   setMarkdownContent: (content) => {
+    const tabId = useAppStore.getState().activeTabId;
     const words = content.trim().split(/\s+/).filter(Boolean).length;
     const readMin = Math.ceil(words / 200);
 
     // Immediate: update raw content and stats (keeps editor responsive)
     set((s) => {
-      const tabs = updateActiveTab(s, {
+      const tabs = updateTabById(s.tabs, tabId, {
         markdownContent: content,
         wordCount: words,
         readingTime: readMin,
         dirty: true,
       });
-      return deriveFromActiveTab(tabs, s.activeTabId);
+      return { ...deriveFromActiveTab(tabs, s.activeTabId) };
     });
 
     // Debounced: re-parse markdown (expensive for large files)
-    clearTimeout(parseTimer);
-    parseTimer = setTimeout(() => {
+    clearTimer(parseTimers, tabId);
+    const parseTimer = setTimeout(() => {
+      parseTimers.delete(tabId);
       const html = parseMarkdown(content);
       set((s) => {
-        const tabs = updateActiveTab(s, { htmlContent: html });
-        return deriveFromActiveTab(tabs, s.activeTabId);
+        if (!s.tabs.some((t) => t.id === tabId)) return {};
+        const tabs = updateTabById(s.tabs, tabId, { htmlContent: html });
+        return { ...deriveFromActiveTab(tabs, s.activeTabId) };
       });
     }, 150);
+    parseTimers.set(tabId, parseTimer);
 
     // Debounced auto-save to localStorage
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(() => {
+    clearTimer(draftTimers, tabId);
+    const draftTimer = setTimeout(() => {
+      draftTimers.delete(tabId);
       const s = useAppStore.getState();
+      const tab = s.tabs.find((t) => t.id === tabId);
+      if (!tab) return;
       safeSetItem("mikedown-draft", JSON.stringify({
-        content,
-        fileName: s.fileName,
-        filePath: s.filePath,
+        content: tab.markdownContent,
+        fileName: tab.fileName,
+        filePath: tab.filePath,
         timestamp: Date.now(),
       }));
     }, 1000);
+    draftTimers.set(tabId, draftTimer);
 
     // Debounced auto-save to file (3s inactivity, only for files with a path)
-    clearTimeout(autoSaveFileTimer);
-    autoSaveFileTimer = setTimeout(async () => {
+    clearTimer(fileAutoSaveTimers, tabId);
+    const autoSaveFileTimer = setTimeout(async () => {
+      fileAutoSaveTimers.delete(tabId);
       const s = useAppStore.getState();
-      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      const tab = s.tabs.find((t) => t.id === tabId);
       if (!tab?.filePath || !tab.dirty) return;
+      const contentToSave = tab.markdownContent;
       try {
         const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-        await writeTextFile(tab.filePath, tab.markdownContent);
+        await writeTextFile(tab.filePath, contentToSave);
         set((prev) => {
-          const tabs = prev.tabs.map((t) =>
-            t.id === tab.id ? { ...t, dirty: false } : t,
-          );
+          const currentTab = prev.tabs.find((t) => t.id === tabId);
+          if (!currentTab || currentTab.markdownContent !== contentToSave) {
+            return {};
+          }
+          const tabs = updateTabById(prev.tabs, tab.id, { dirty: false });
           return { ...deriveFromActiveTab(tabs, prev.activeTabId) };
         });
-        safeRemoveItem("mikedown-draft");
+        clearDraftForSavedTab({
+          fileName: tab.fileName,
+          filePath: tab.filePath,
+          markdownContent: contentToSave,
+        });
       } catch {
         // Auto-save failure is non-fatal — user can still save manually
       }
     }, 3000);
+    fileAutoSaveTimers.set(tabId, autoSaveFileTimer);
   },
 
   markClean: () => {
@@ -457,6 +516,30 @@ export const useAppStore = create<AppState>((set) => ({
     safeRemoveItem("mikedown-draft");
   },
 
+  markTabSaved: (tabId, path, name) => {
+    clearTimer(draftTimers, tabId);
+    clearTimer(fileAutoSaveTimers, tabId);
+
+    set((s) => {
+      if (!s.tabs.some((t) => t.id === tabId)) return {};
+      const tabs = updateTabById(s.tabs, tabId, {
+        filePath: path,
+        fileName: name,
+        dirty: false,
+      });
+      persistSession(tabs, s.activeTabId);
+      return {
+        ...deriveFromActiveTab(tabs, s.activeTabId),
+        isDropZoneVisible: false,
+      };
+    });
+
+    const savedTab = useAppStore.getState().tabs.find((t) => t.id === tabId);
+    if (savedTab) {
+      clearDraftForSavedTab(savedTab);
+    }
+  },
+
   // -- Tab management --
 
   newTab: () =>
@@ -472,7 +555,9 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
   closeTab: (id) =>
-    set((s) => {
+    (() => {
+      clearTabTimers(id);
+      return set((s) => {
       if (s.tabs.length <= 1) {
         const tab = createEmptyTab();
         const newTabs = [tab];
@@ -495,7 +580,8 @@ export const useAppStore = create<AppState>((set) => ({
         activeTabId: newActiveId,
         isDropZoneVisible: !tabs.find((t) => t.id === newActiveId)?.markdownContent,
       };
-    }),
+      });
+    })(),
 
   setActiveTab: (id) =>
     set((s) => {

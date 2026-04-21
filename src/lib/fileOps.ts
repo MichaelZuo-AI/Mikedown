@@ -45,6 +45,7 @@ export async function readDroppedFile(filePath: string) {
  */
 export async function saveMarkdownFile() {
   const store = useAppStore.getState();
+  const tabId = store.activeTabId;
   let path = store.filePath;
 
   if (!path) {
@@ -59,8 +60,7 @@ export async function saveMarkdownFile() {
   try {
     await writeTextFile(path, store.markdownContent);
     const name = extractFileName(path);
-    useAppStore.setState({ filePath: path, fileName: name, dirty: false });
-    try { localStorage.removeItem("mikedown-draft"); } catch { /* noop */ }
+    useAppStore.getState().markTabSaved(tabId, path, name);
   } catch (err) {
     console.error("Failed to save file:", err);
     useAppStore.getState().showToast("Failed to save file. Please try again.");
