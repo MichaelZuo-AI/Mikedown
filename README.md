@@ -85,6 +85,13 @@ The first build takes a few minutes to compile Rust dependencies. Subsequent bui
 
 ## Changelog
 
+### v0.15.0
+
+- Fix cross-tab autosave, draft, and preview parsing races by scoping delayed work to the edited tab
+- Fix save/save-as not updating the real tab record in multi-tab sessions
+- Fix standalone HTML export to preserve rendered preview output and inline local images
+- Fix preview search from matching generated chrome like code-copy buttons instead of markdown content
+
 ### v0.13.0
 
 - Search & replace — collapsible replace row with single replace and replace all
