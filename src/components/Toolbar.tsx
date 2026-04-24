@@ -15,6 +15,7 @@ export default function Toolbar() {
   const toggleEditMode = useAppStore((s) => s.toggleEditMode);
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const cycleKeybindingMode = useAppStore((s) => s.cycleKeybindingMode);
+  const newMarkdownFile = useAppStore((s) => s.newMarkdownFile);
   const zoom = useAppStore((s) => s.zoom);
 
   const statsText =
@@ -26,6 +27,9 @@ export default function Toolbar() {
     <div className="toolbar" data-tauri-drag-region>
       <button className="tb-btn" title="Toggle sidebar" aria-label="Toggle sidebar" onClick={toggleSidebar}>
         &#x2630;
+      </button>
+      <button className="tb-btn" title="New Markdown" aria-label="New Markdown" onClick={newMarkdownFile}>
+        +
       </button>
       <span className="file-name">
         {dirty ? "\u25CF " : ""}{fileName}

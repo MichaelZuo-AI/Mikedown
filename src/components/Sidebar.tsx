@@ -6,6 +6,7 @@ import RecentFiles from "./RecentFiles";
 export default function Sidebar() {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const newMarkdownFile = useAppStore((s) => s.newMarkdownFile);
 
   return (
     <>
@@ -14,9 +15,14 @@ export default function Sidebar() {
           <div className="logo">M</div>
           <span className="logo-text">MikeDown</span>
         </div>
-        <button className="open-btn" onClick={openMarkdownFile}>
-          <span>&#x1F4C2;</span> Open File
-        </button>
+        <div className="sidebar-actions">
+          <button className="open-btn" onClick={newMarkdownFile}>
+            <span>+</span> New Markdown
+          </button>
+          <button className="open-btn" onClick={openMarkdownFile}>
+            <span>&#x1F4C2;</span> Open File
+          </button>
+        </div>
         <RecentFiles />
         <Toc />
         <button

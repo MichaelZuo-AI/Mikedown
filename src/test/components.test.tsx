@@ -110,6 +110,18 @@ describe("DropZone", () => {
     expect(screen.getByRole("button", { name: /open file/i })).toBeInTheDocument();
   });
 
+  it("renders a 'New Markdown' button", () => {
+    render(<DropZone />);
+    expect(screen.getByRole("button", { name: /new markdown/i })).toBeInTheDocument();
+  });
+
+  it("clicking New Markdown creates an editable untitled document", () => {
+    render(<DropZone />);
+    fireEvent.click(screen.getByRole("button", { name: /new markdown/i }));
+    expect(useAppStore.getState().fileName).toBe("Untitled.md");
+    expect(useAppStore.getState().editMode).toBe(true);
+  });
+
   it("has class 'drop-zone' by default", () => {
     const { container } = render(<DropZone />);
     expect(container.firstElementChild?.className).toContain("drop-zone");
@@ -256,6 +268,18 @@ describe("Toolbar", () => {
     render(<Toolbar />);
     fireEvent.click(screen.getByTitle("Search"));
     expect(useAppStore.getState().searchOpen).toBe(true);
+  });
+
+  it("renders the new Markdown button", () => {
+    render(<Toolbar />);
+    expect(screen.getByTitle("New Markdown")).toBeInTheDocument();
+  });
+
+  it("clicking New Markdown creates an editable untitled document", () => {
+    render(<Toolbar />);
+    fireEvent.click(screen.getByTitle("New Markdown"));
+    expect(useAppStore.getState().fileName).toBe("Untitled.md");
+    expect(useAppStore.getState().editMode).toBe(true);
   });
 
   it("renders the export button", () => {
@@ -632,6 +656,18 @@ describe("Sidebar", () => {
   it("renders an 'Open File' button", () => {
     render(<Sidebar />);
     expect(screen.getByRole("button", { name: /open file/i })).toBeInTheDocument();
+  });
+
+  it("renders a 'New Markdown' button", () => {
+    render(<Sidebar />);
+    expect(screen.getByRole("button", { name: /new markdown/i })).toBeInTheDocument();
+  });
+
+  it("clicking New Markdown creates an editable untitled document", () => {
+    render(<Sidebar />);
+    fireEvent.click(screen.getByRole("button", { name: /new markdown/i }));
+    expect(useAppStore.getState().fileName).toBe("Untitled.md");
+    expect(useAppStore.getState().editMode).toBe(true);
   });
 
   it("has class 'sidebar' without 'collapsed' when sidebarCollapsed is false", () => {

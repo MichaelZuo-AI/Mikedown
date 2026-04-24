@@ -173,6 +173,24 @@ describe("App — keyboard shortcuts", () => {
     expect(() => pressKey("o", { ctrlKey: true })).not.toThrow();
   });
 
+  it("Cmd+N creates a new Markdown document", () => {
+    render(<App />);
+
+    pressKey("n", { metaKey: true });
+
+    expect(useAppStore.getState().fileName).toBe("Untitled.md");
+    expect(useAppStore.getState().editMode).toBe(true);
+    expect(useAppStore.getState().isDropZoneVisible).toBe(false);
+  });
+
+  it("Ctrl+N creates a new Markdown document", () => {
+    render(<App />);
+
+    pressKey("n", { ctrlKey: true });
+
+    expect(useAppStore.getState().fileName).toBe("Untitled.md");
+  });
+
   it("removes keydown listener on unmount", () => {
     const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
     const { unmount } = render(<App />);

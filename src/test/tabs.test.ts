@@ -65,6 +65,35 @@ describe("appStore — tabs: newTab", () => {
   });
 });
 
+describe("appStore — newMarkdownFile", () => {
+  beforeEach(resetStore);
+
+  it("turns an untouched starter tab into a new Markdown document", () => {
+    get().newMarkdownFile();
+
+    expect(get().tabs).toHaveLength(1);
+    expect(get().fileName).toBe("Untitled.md");
+    expect(get().filePath).toBe("");
+    expect(get().markdownContent).toBe("");
+    expect(get().dirty).toBe(false);
+    expect(get().editMode).toBe(true);
+    expect(get().isDropZoneVisible).toBe(false);
+  });
+
+  it("opens a new document tab when the active tab is already in use", () => {
+    get().loadMarkdown("# Existing", "existing.md", "/docs/existing.md");
+    const existingId = get().activeTabId;
+
+    get().newMarkdownFile();
+
+    expect(get().tabs).toHaveLength(2);
+    expect(get().activeTabId).not.toBe(existingId);
+    expect(get().fileName).toBe("Untitled.md");
+    expect(get().filePath).toBe("");
+    expect(get().editMode).toBe(true);
+  });
+});
+
 describe("appStore — tabs: closeTab", () => {
   beforeEach(resetStore);
 

@@ -70,4 +70,22 @@ describe("saveMarkdownFile", () => {
     expect(get().fileName).toBe("draft.md");
     expect(get().filePath).toBe("/docs/draft.md");
   });
+
+  it("uses Untitled.md as the default save name for a new Markdown document", async () => {
+    get().newMarkdownFile();
+
+    mockSave.mockResolvedValueOnce("/docs/untitled.md");
+    mockWriteTextFile.mockResolvedValueOnce(undefined);
+
+    await saveMarkdownFile();
+
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultPath: "Untitled.md",
+      }),
+    );
+    expect(mockWriteTextFile).toHaveBeenCalledWith("/docs/untitled.md", "");
+    expect(get().fileName).toBe("untitled.md");
+    expect(get().filePath).toBe("/docs/untitled.md");
+  });
 });

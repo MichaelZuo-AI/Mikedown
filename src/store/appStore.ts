@@ -81,6 +81,7 @@ interface AppState {
   restoreDraft: () => void;
   clearDraft: () => void;
   markTabSaved: (tabId: string, path: string, name: string) => void;
+  newMarkdownFile: () => void;
 
   // Tab actions
   newTab: () => void;
@@ -148,6 +149,13 @@ function createEmptyTab(): Tab {
     readingTime: 0,
     dirty: false,
     scrollTop: 0,
+  };
+}
+
+function createNewMarkdownTab(): Tab {
+  return {
+    ...createEmptyTab(),
+    fileName: "Untitled.md",
   };
 }
 
@@ -539,6 +547,41 @@ export const useAppStore = create<AppState>((set) => ({
       clearDraftForSavedTab(savedTab);
     }
   },
+
+  newMarkdownFile: () =>
+    set((s) => {
+      const active = getActiveTab(s);
+      const isUntouched = !active.markdownContent && !active.filePath && !active.dirty;
+
+      if (isUntouched) {
+        const tabs = updateActiveTab(s, {
+          markdownContent: "",
+          htmlContent: "",
+          fileName: "Untitled.md",
+          filePath: "",
+          wordCount: 0,
+          readingTime: 0,
+          dirty: false,
+          scrollTop: 0,
+        });
+        persistSession(tabs, s.activeTabId);
+        return {
+          ...deriveFromActiveTab(tabs, s.activeTabId),
+          editMode: true,
+          isDropZoneVisible: false,
+        };
+      }
+
+      const tab = createNewMarkdownTab();
+      const tabs = [...s.tabs, tab];
+      persistSession(tabs, tab.id);
+      return {
+        ...deriveFromActiveTab(tabs, tab.id),
+        activeTabId: tab.id,
+        editMode: true,
+        isDropZoneVisible: false,
+      };
+    }),
 
   // -- Tab management --
 

@@ -4,6 +4,7 @@ import { openMarkdownFile } from "@/lib/fileOps";
 export default function DropZone() {
   const isDropZoneVisible = useAppStore((s) => s.isDropZoneVisible);
   const isDragOver = useAppStore((s) => s.isDragOver);
+  const newMarkdownFile = useAppStore((s) => s.newMarkdownFile);
 
   const className = [
     "drop-zone",
@@ -18,9 +19,14 @@ export default function DropZone() {
       <div className="drop-icon">📄</div>
       <div className="drop-text">Drop a Markdown file here</div>
       <div className="drop-sub">.md, .markdown, .txt</div>
-      <button className="drop-open" onClick={openMarkdownFile}>
-        Open File
-      </button>
+      <div className="drop-actions">
+        <button className="drop-open" onClick={newMarkdownFile}>
+          New Markdown
+        </button>
+        <button className="drop-open drop-secondary" onClick={openMarkdownFile}>
+          Open File
+        </button>
+      </div>
     </div>
   );
 }

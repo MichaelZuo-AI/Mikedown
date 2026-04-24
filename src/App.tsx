@@ -26,6 +26,7 @@ export default function App() {
   const toggleSearch = useAppStore((s) => s.toggleSearch);
   const loadMarkdown = useAppStore((s) => s.loadMarkdown);
   const setDragOver = useAppStore((s) => s.setDragOver);
+  const newMarkdownFile = useAppStore((s) => s.newMarkdownFile);
   const newTab = useAppStore((s) => s.newTab);
   const closeTab = useAppStore((s) => s.closeTab);
   const zoom = useAppStore((s) => s.zoom);
@@ -100,6 +101,10 @@ export default function App() {
         e.preventDefault();
         openMarkdownFile();
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        newMarkdownFile();
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
         toggleSidebar();
@@ -139,7 +144,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSidebar, toggleEditMode, toggleSearch, newTab, closeTab, zoom]);
+  }, [toggleSidebar, toggleEditMode, toggleSearch, newMarkdownFile, newTab, closeTab, zoom]);
 
   // Trackpad pinch-to-zoom (macOS sends wheel events with ctrlKey for pinch gestures)
   useEffect(() => {
