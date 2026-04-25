@@ -152,6 +152,7 @@ export default function Editor() {
 
       const view = new EditorView({ state, parent: containerRef.current });
       viewRef.current = view;
+      view.focus();
     });
 
     return () => {
@@ -164,7 +165,7 @@ export default function Editor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme, keybindingMode]);
 
-  // Sync external content changes (e.g. file open) into editor
+  // Sync external content changes (e.g. file open, new file, tab switch) into editor
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
@@ -173,6 +174,7 @@ export default function Editor() {
       view.dispatch({
         changes: { from: 0, to: currentDoc.length, insert: markdownContent },
       });
+      view.focus();
     }
   }, [markdownContent]);
 
