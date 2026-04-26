@@ -16,7 +16,7 @@ export default function DropZone() {
 
   return (
     <div className={className}>
-      <div className="drop-icon">📄</div>
+      <div className="drop-icon">MD</div>
       <div className="drop-text">Drop a Markdown file here</div>
       <div className="drop-sub">.md, .markdown, .txt</div>
       <div className="drop-actions">
