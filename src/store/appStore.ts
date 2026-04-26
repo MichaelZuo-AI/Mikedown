@@ -134,6 +134,7 @@ function persistSession(tabs: Tab[], activeTabId: string): void {
 }
 
 let nextTabId = 1;
+const BALANCED_SPLIT_RATIO = 50;
 function genTabId(): string {
   return `tab-${nextTabId++}`;
 }
@@ -250,7 +251,7 @@ export const useAppStore = create<AppState>((set) => ({
   theme: (safeGetItem("mikedown-theme") as Theme) || "dark",
   fontSize: 100,
   searchOpen: false,
-  splitRatio: Number(safeGetItem("mikedown-split-ratio")) || 50,
+  splitRatio: Number(safeGetItem("mikedown-split-ratio")) || BALANCED_SPLIT_RATIO,
 
   keybindingMode: (safeGetItem("mikedown-keybinding") as KeybindingMode) || "default",
 
@@ -550,6 +551,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   newMarkdownFile: () =>
     set((s) => {
+      safeSetItem("mikedown-split-ratio", String(BALANCED_SPLIT_RATIO));
       const active = getActiveTab(s);
       const isUntouched = !active.markdownContent && !active.filePath && !active.dirty;
 
@@ -568,6 +570,7 @@ export const useAppStore = create<AppState>((set) => ({
         return {
           ...deriveFromActiveTab(tabs, s.activeTabId),
           editMode: true,
+          splitRatio: BALANCED_SPLIT_RATIO,
           isDropZoneVisible: false,
         };
       }
@@ -579,6 +582,7 @@ export const useAppStore = create<AppState>((set) => ({
         ...deriveFromActiveTab(tabs, tab.id),
         activeTabId: tab.id,
         editMode: true,
+        splitRatio: BALANCED_SPLIT_RATIO,
         isDropZoneVisible: false,
       };
     }),

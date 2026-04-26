@@ -25,6 +25,7 @@ function resetStore() {
     theme: "dark" as const,
     fontSize: 100,
     searchOpen: false,
+    splitRatio: 50,
     keybindingMode: "default" as const,
     toastMessage: "",
     toastVisible: false,
@@ -77,6 +78,7 @@ describe("appStore — newMarkdownFile", () => {
     expect(get().markdownContent).toBe("");
     expect(get().dirty).toBe(false);
     expect(get().editMode).toBe(true);
+    expect(get().splitRatio).toBe(50);
     expect(get().isDropZoneVisible).toBe(false);
   });
 
@@ -91,6 +93,16 @@ describe("appStore — newMarkdownFile", () => {
     expect(get().fileName).toBe("Untitled.md");
     expect(get().filePath).toBe("");
     expect(get().editMode).toBe(true);
+    expect(get().splitRatio).toBe(50);
+  });
+
+  it("rebalances a narrow split when starting a new Markdown document", () => {
+    get().setSplitRatio(20);
+
+    get().newMarkdownFile();
+
+    expect(get().splitRatio).toBe(50);
+    expect(localStorage.getItem("mikedown-split-ratio")).toBe("50");
   });
 });
 
