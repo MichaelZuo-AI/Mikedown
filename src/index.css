@@ -911,7 +911,8 @@ mark.search-current {
 
 .content {
   width: 100%;
-  max-width: 720px;
+  max-width: clamp(760px, 72vw, 1240px);
+  box-sizing: border-box;
   padding: 64px 56px 96px;
   min-height: 100%;
   font-family: var(--font-body);
