@@ -1,6 +1,6 @@
 [package]
 name = "mikedown"
-version = "0.18.2"
+version = "0.18.3"
 description = "MikeDown — Markdown editor and viewer"
 authors = ["Michael Zuo"]
 license = "MIT"
